@@ -1,0 +1,153 @@
+1. Dequeue시 head가 nullptr인 상황
+- 애초에 지금 head->next가 nullptr인데 지워버릴려고 함.
+- 로그도 이상하게 남음. do while문이라엇 LogicTime = 0 에 대한 로그가 무조건 남고 나서 LogicTime =1이 남겨져야 하는데 0이 안남아서 일단 while문으로 바꿔보긴 했음. 
+
+2. 똑같이 newNode == tailNode인 상황
+- 로그가 최상단으로 부터 40개 정도 있어서 최상단 부터 분석 시작함.
+[16799990000] [Thread ID : 00468] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x478e017aa7f71c20] [LocalNewNodeAddr : 0x478f017aa7f71f80] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x0000000000000000] 
+
+
+[16799990001] [Thread ID : 18376] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x478e817aa7f71f20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x478e800000000000] 
+[16799990002] [Thread ID : 18376] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x478e817aa7f71f20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x0000000000000000] 
+[16799990003] [Thread ID : 18376] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x478e817aa7f71f20] [LocalNewNodeAddr : 0x478f817aa7f71dd0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x00007ff6af5e66b0] 
+[16799990004] [Thread ID : 18376] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x478e817aa7f71f20] [LocalNewNodeAddr : 0x478f817aa7f71dd0] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x478e817aa7f71f20] 
+
+- 여기까지 했을 때
+[head : 0x478f017aa7f71f80]->...->[0x0000017aa7f71f20] ->[tail : 0x478f817aa7f71dd0]
+
+
+[16799990005] [Thread ID : 18376] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x478f817aa7f71dd0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71dd0] [RetCAS : 0x478f800000000000] 
+
+
+[16799990006] [Thread ID : 00468] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x478f817aa7f71dd0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71dd0] [RetCAS : 0x478f800000000000] 
+[16799990007] [Thread ID : 00468] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x478f817aa7f71dd0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71dd0] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 했을 때
+[head : 0x478f017aa7f71f80]->[0x0000017aa7f71f20] ->[tail : 0x478f817aa7f71dd0]
+
+[16799990008] [Thread ID : 18376] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x478f017aa7f71f80] [LocalNewNodeAddr : 0x4790817aa7f71f20] [RealNodeAddr : 0x0000017aa7f71f80] [RetCAS : 0x0000000000000000] 
+
+
+
+[16799990009] [Thread ID : 00468] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x478f817aa7f71dd0] [LocalNewNodeAddr : 0x4790017aa7f71c20] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x00007ff6af5e66b0] 
+
+
+- 여기까지 했을 때
+[head : 0x478f017aa7f71f80]->[0x0000017aa7f71f20] ->[tail : 0x478f817aa7f71dd0] ->[next : 0x4790017aa7f71c20]
+
+
+[16799990010] [Thread ID : 18376] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x478f017aa7f71f80] [LocalNewNodeAddr : 0x4790817aa7f71f20] [RealNodeAddr : 0x0000017aa7f71f80] [RetCAS : 0x0000000000000000] 
+
+
+[16799990011] [Thread ID : 00468] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x478f817aa7f71dd0] [LocalNewNodeAddr : 0x4790017aa7f71c20] [RealNodeAddr : 0x0000017aa7f71dd0] [RetCAS : 0x478f817aa7f71dd0] 
+
+- 여기까지 했을 때
+[head : 0x4790817aa7f71f20] ->[0x478f817aa7f71dd0] ->[tail : 0x4790017aa7f71c20]
+
+
+
+
+[16799990012] [Thread ID : 18376] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x4790000000000000] 
+[16799990013] [Thread ID : 18376] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x4790817aa7f71f20] [LocalNewNodeAddr : 0x4791017aa7f71dd0] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x0000000000000000] 
+
+
+[16799990014] [Thread ID : 00468] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x4790000000000000] 
+
+
+[16799990015] [Thread ID : 18376] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x4790817aa7f71f20] [LocalNewNodeAddr : 0x4791017aa7f71dd0] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 했을 때
+[head : 0x4791017aa7f71dd0] ->[tail : 0x4790017aa7f71c20]
+
+[16799990016] [Thread ID : 00468] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x0000000000000000] 
+
+
+[16799990017] [Thread ID : 18376] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x4790000000000000] 
+[16799990018] [Thread ID : 18376] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x0000000000000000] 
+[16799990019] [Thread ID : 18376] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x4792017aa7f71f20] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x00007ff6af5e66b0] 
+[16799990020] [Thread ID : 18376] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x4792017aa7f71f20] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x4790017aa7f71c20] 
+
+[16799990021] [Thread ID : 18376] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x4792017aa7f71f20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x4792000000000000] 
+[16799990022] [Thread ID : 18376] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x4792017aa7f71f20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x0000000000000000] 
+[16799990023] [Thread ID : 18376] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x4792017aa7f71f20] [LocalNewNodeAddr : 0x4792817aa7f71e90] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x00007ff6af5e66b0] 
+[16799990024] [Thread ID : 18376] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x4792017aa7f71f20] [LocalNewNodeAddr : 0x4792817aa7f71e90] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x4792017aa7f71f20] 
+
+- 여기까지 했을 때
+[head : 0x4791017aa7f71dd0] ->[ 0x4790017aa7f71c20] -> [0x4792017aa7f71f20]->[tail : 0x4792817aa7f71e90]
+
+
+[16799990025] [Thread ID : 18376] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x4792817aa7f71e90] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71e90] [RetCAS : 0x4792800000000000] 
+[16799990026] [Thread ID : 18376] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x4791017aa7f71dd0] [LocalNewNodeAddr : 0x4793017aa7f71c20] [RealNodeAddr : 0x0000017aa7f71dd0] [RetCAS : 0x0000000000000000] 
+[16799990027] [Thread ID : 18376] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x4791017aa7f71dd0] [LocalNewNodeAddr : 0x4793017aa7f71c20] [RealNodeAddr : 0x0000017aa7f71dd0] [RetCAS : 0x0000000000000000] 
+
+[16799990028] [Thread ID : 18376] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x4792817aa7f71e90] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71e90] [RetCAS : 0x4792800000000000] 
+[16799990029] [Thread ID : 18376] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x4793017aa7f71c20] [LocalNewNodeAddr : 0x4793817aa7f71f20] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x0000000000000000] 
+[16799990030] [Thread ID : 18376] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x4793017aa7f71c20] [LocalNewNodeAddr : 0x4793817aa7f71f20] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x0000000000000000] 
+
+
+- 여기까지 했을 때
+[head : 0x4793817aa7f71f20]->[tail : 0x4792817aa7f71e90]
+
+
+[16799990031] [Thread ID : 18376] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x4792817aa7f71e90] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71e90] [RetCAS : 0x4792800000000000] 
+[16799990032] [Thread ID : 18376] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x4792817aa7f71e90] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71e90] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 했을 때 468 스레드가 바라본 tail이 : 0x4790017aa7f71c20인데 아래쪽 로그를 보면 1stCAS를 통과하고 있음. 
+- 왜냐면 13876 스레드가 위 로그에서 Enqueue작업할때 메모리풀에서 꺼낸 노드가 0x0000017aa7f71c20 이것이고 이걸 nullptr로 초기화 하고 있음. 그래서 468 스레드는 그걸 잘못 보고 newNode의 next에 
+  노드를 붙이고 있음.
+- 그리고 2ndCAS를 하는데 localTail이 다르니까 실패함. 
+[head : 0x4793817aa7f71f20]->[tail : 0x4792817aa7f71e90] -> nullptr
+
+[newNode : 0x0000017aa7f71c20] ->[next : 0x4791817aa7f71f80]
+
+[16799990033] [Thread ID : 00468] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x4791817aa7f71f80] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x00007ff6af5e66b0] 
+[16799990034] [Thread ID : 00468] [Enqueue] [LogicTime : 5] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x4791817aa7f71f80] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x4792817aa7f71e90] 
+[16799990035] [Thread ID : 00468] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x4790017aa7f71c20] [LocalNewNodeAddr : 0x4791817aa7f71f80] [RealNodeAddr : 0x0000017aa7f71c20] [RetCAS : 0x4792817aa7f71e90] 
+
+
+
+
+[16799990036] [Thread ID : 00468] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x4792817aa7f71e90] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71e90] [RetCAS : 0x4792800000000000] 
+[16799990037] [Thread ID : 00468] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x4793817aa7f71f20] [LocalNewNodeAddr : 0x4794817aa7f71e90] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x0000000000000000] 
+[16799990038] [Thread ID : 00468] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x4793817aa7f71f20] [LocalNewNodeAddr : 0x4794817aa7f71e90] [RealNodeAddr : 0x0000017aa7f71f20] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 하면 아래 상태인데 
+[head / tail : 0x4792817aa7f71e90] -> nullptr
+
+[newNode : 0x0000017aa7f71c20] ->[next : 0x4791817aa7f71f80]
+
+[16799990039] [Thread ID : 00468] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x4792817aa7f71e90] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71e90] [RetCAS : 0x4792800000000000] 
+[16799990040] [Thread ID : 00468] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x4794817aa7f71e90] [LocalNewNodeAddr : 0x4795017aa7f71c20] [RealNodeAddr : 0x0000017aa7f71e90] [RetCAS : 0x0000000000000000] 
+[16799990041] [Thread ID : 00468] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x4794817aa7f71e90] [LocalNewNodeAddr : 0x4795017aa7f71c20] [RealNodeAddr : 0x0000017aa7f71e90] [RetCAS : 0x0000000000000000] 
+
+- 위 로직에서 Dequeue를 할 때 지금 head는 제대로 가리키고 있음. 그런데 head의 next가 nullptr이어야 하는데 일단 newNode를 가리키고 있음. 원래는 잘 가리키는게 맞음.
+- 그런데 왜 newNode를 가리키는지가 이해가 안됨. 어쨌든 7f71e90을 468 스레드가 반납하고 다음 Enqueue를 하려는데 tail은 아직 그대로고 직전에 Dequeue에서 반납한 노드를 Enqueue에서 다시 가져오고
+   있으니 tail == newNode가 발생하는 것임.
+
+[16799990042] [Thread ID : 00468] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x4792817aa7f71e90] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000017aa7f71e90] [RetCAS : 0x4792800000000000] 
+
+
+- 그러면 어쨌든 지금 문제의 원인은 1번 스레드가 A노드를 tail로 바라보고 있었는데 그 순간 다른 스레드가 Dequeue, Enqueue를 반복하면서 해당 노드를 메모리 풀에 빼버리고 1번 스레드가 바라보던
+tailNode를 newNode로 메모리풀에서 꺼내서 nullptr로 초기화 하는 순간 1stCAS를 하려던 1번 스레드는 newNode를 tail로 보고 next보니 nullptr이라서 1stCAS를 해버림.
+- 즉, 초기화 할때 nullptr을 진짜 tail의 next가 nullptr로 인지하는 것임. 
+- 그러면 초기화 할때 nullptr 말고 다른 값으로 밀어주면 될 것같음.
+
+
+2. 대안
+- newNode의 next를 0xFFFF FFFF FFFF FFFF로 밀어버리면 위에서 468 스레드는 tail노드로 바라보고 18376스레드는 newNode로 메모리 풀에서 꺼내온 노드인데 468 스레드가 대뜸 1stCAS를 해버리진
+  않을 것임.
+- 그러면 FFFF FFFF FFFF FFFF로 초기화한 노드의 next 변수를 결국 nullptr로 다시 만들어 줘야지 다른 스레드들도 1stCAS에서 next를 nullptr로 보고 노드를 붙일 수 있을 것임.
+- 그러면 1st CAS하고 언제 내 노드의 next를 nullptr로 바꿀까? 2ndCAS까지 하고 nulllptr로 바꾸면 결국 1stCAS, 2ndCAS를 할때까지 다른 스레드는 못하니 로직적으로 묶여버린 것임.
+  그래서 1st CAS하고 next를 nullptr로 바꿔 보자.
+- 이렇게 하면 사전작업도 
+[tail : 0xaaa] -> [next : 0xffff ffff ffff fff]가 되는데 이때 사전작업에서 next가 nullptr이 아니기 때문에 tail을 0xffff ffff ffff ffff로 바꿔버림.
+- 탈출 조건을 0xffff ffff ffff ffff로 바꿔보자. 
+- 그리고 생성자에서 더미 노드의 next도 0xFFFF FFFF FFFF FFFF로 바꿔야 사전 작업 탈출 가능함.
+- 그런데 사전 작업은 탈출하는데 1st CAS가 nullptr로 작동하다 보니 모든 스레드가 1stCAS를 못함.
+- 그러면 더미 노드 next는 nullptr로 하고 
+- 애초에 사전작업 탈출 조건을 0xffff ffff ffff ffff 거나 nullptr일 때 나가도록 하자.
+- 아직까지는 잘 작동되고 우리는 락프리 큐를 1stCAS 2ndCAS 묶지 않았음. 그래서 1stCAS 통과하는 스레드가 2개이상인지 잠깐 체크해보자.
+- 1stCAS후 2ndCAS 직전 변수 1개 CNT증가 시키고, 감소시킬 때 1 or 0아니면 중단점 걸었는데 2개 스레드 모두 여기서 걸려서 진입한거 보임.
+
+
+

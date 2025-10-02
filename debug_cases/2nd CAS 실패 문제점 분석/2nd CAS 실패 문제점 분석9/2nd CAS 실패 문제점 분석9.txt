@@ -1,0 +1,256 @@
+1. Enqueue 1st CAS 전 사전 작업
+- 우선 Enqueue 사전 작업하고 나서 1st CAS를 할 수 있는 스레드를 여러개가 발생할 수 있게 할지 아니면 
+- 사전작업을 통과해서 1st CAS를 단 1스레드만이 통과하고 1st CAS를 누군가 성공한 순간 사전작업쪽에서 tail->next가 nullptr이 아니게 되므로 
+  tail을 바꾸고 1st CAS 진입 가능하게 만드는 것임.
+- 이 2가지 구조에서 사전 작업에서 여러 스레드가 tail의 next가 nullptr일 때까지 tail을 바꿔주고 1st CAS에 여러 스레드가 진입하는 구조랑 
+  사전 작업은 여러 스레드가 하는데 사전작업 끝나고 1st CAS에 진입하는 스레드가 1개고 그 스레드가 1st CAS 통과후 사전작업 통과하는 스레드가 발생해서 
+  그 스레드가 1st CAS 해서 2nd CAS하는 것임.
+
+- 그리고 추가적으로 이 작업을 Enqueue에서만 할지 아니면 Dequeue에서도 해야 하는지도 결정해야 함.
+
+- 우선 Enqueue 사전 작업을 통과하는 스레드를 1개만 있게 만들어 보려고 하는데 보니까 next가 nullptr인것 체크와 m_Tail을 바꾸는 작업이 CAS 1개로 안됨.
+- 일단 이전 처럼 next가 nullptr이면 탈출 시켜주고 아니면 tail을 바꿔주도록 함.
+- 그러면 이때 사전작업에서 realTail == localTailNext인 상황이 발생함. 아래 로그를 보면 Enqueue를 할 때 localTail노드랑 Enqueue할때 메모리 풀에서 뽑은 newNode가 내것이 나옴.
+  그래서 realTail이랑 next가 같아져 버림.
+[1616970] [Thread ID : 01584] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0xfea882054d440de0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000002054d440de0]
+[1616971] [Thread ID : 01584] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0xfea882054d440de0] [LocalNewNodeAddr : 0xfeab02054d440de0] [RealNodeAddr : 0x0000000000000000]
+[1616972] [Thread ID : 01584] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0xfea882054d440de0] [LocalNewNodeAddr : 0xfeab02054d440de0] [RealNodeAddr : 0x000002054d440de0]
+
+[1616973] [Thread ID : 08600] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0xfeab02054d440de0] [LocalNewNodeAddr : 0x000002054d440de0] [RealNodeAddr : 0x000002054d440de0]
+[1616974] [Thread ID : 01584] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0xfeab02054d440de0] [LocalNewNodeAddr : 0x000002054d440de0] [RealNodeAddr : 0x000002054d440de0]
+
+- 그러면 이 사태의 원인이 메모리 풀에서 같은 노드가 나온 것인지 아니면 락프리 큐에서 문제가 발생한 것인지 봐야 함.
+- 그런데 이 락프리 메모리풀을 네트워크 라이브러리에서 사용하는 iocp에 적용했을 때는 문제가 바로 터지진 않았음. 그리고 락프리 메모리 풀 테스트도 잘하는 것로 봐서는 문제가 일단 없는것으로
+  보자.
+
+- 락프리 큐 로직으로 인해 해당 문제가 발생하는 것으로 생각할 때 그러면 Enqueue할 때 newNode랑 tail에서 tag땐 노드가 같을 때 중단점을 걸어보자.
+  2번째 로그 파일을 보자.
+- 지금 로그가 마지막으로 남겨진 부분을 보면 9736 스레드가 갑자기 Dequeue에서 LogicTime 0을 건너 뛰고 갑자기 1이 찍혔는데 이건 Dequeue의 문제가 아니라 FileLog를 호출할 때
+  내부에서 플래그를 1로 바꾸는데 Dequeue 진입시 do while에서 Flag가 1이면 while 탈출해서 LogicTime 2로 넘어가도록 되어 있어서 발생하는 것임. 즉, Dequeue 자체 문제로 발생한것은
+  아님.
+
+[986491] [Thread ID : 09736] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x6db8820c99b62af0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b62af0]
+[986492] [Thread ID : 09736] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x6db8820c99b62af0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b62af0]
+[986493] [Thread ID : 09736] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x6db8820c99b62af0] [LocalNewNodeAddr : 0x6dbb820c99b62a60] [RealNodeAddr : 0x0000000000000000]
+[986494] [Thread ID : 09736] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x6db8820c99b62af0] [LocalNewNodeAddr : 0x6dbb820c99b62a60] [RealNodeAddr : 0x0000020c99b62af0]
+
+[986495] [Thread ID : 09736] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x6dbb820c99b62a60] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b62a60]
+[986496] [Thread ID : 09736] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x6dbb820c99b62a60] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b62a60]
+[986497] [Thread ID : 09736] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x6dbb820c99b62a60] [LocalNewNodeAddr : 0x6dbc020c99b62a90] [RealNodeAddr : 0x0000000000000000]
+[986498] [Thread ID : 09736] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x6dbb820c99b62a60] [LocalNewNodeAddr : 0x6dbc020c99b62a90] [RealNodeAddr : 0x0000020c99b62a60]
+
+[986499] [Thread ID : 09736] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x6dba820c99b627c0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b627c0]
+
+[981500] [Thread ID : 08396] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x0000020c99b62a90] [LocalNewNodeAddr : 0x6a88020c99b62a60] [RealNodeAddr : 0x0000020c99b62a90]
+
+
+- 지금 재사용 되고 있는 노드가 0x0000020c99b62af0 이 노드가 Tail이자 newNode가 되고 있는 상황이라 이 노드가 어떻게 되고 있는지 추적해봐야 할 듯함.
+- 지금 8396 스레드에서 아래처럼 관측되고 있음.
+tailNode  : 0x6db8820c99b62af0
+newNode : 0x0000020c99b62af0
+
+- 아래 로그를 보자. 
+아래로그 Dequeue가 총 4번 이뤄졌는데 각 스레드가 2번씩 한 것임. 이때 큐의 노드 변화를 보고 Dequeue 초기에 큐 상태를 볼 수 있음. 그래서 그걸 그려보면 아래와 같음.
+[Head : 0x6db7820c99b62880] -> [0x0000020c99b62a90] - > [ 0x0000020c99b62a60] -> [0x0000020c99b62af0] ->[tail : 0x6dba820c99b627c0]
+
+[986481] [Thread ID : 08396] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x6db7820c99b62880] [LocalNewNodeAddr : 0x6db9020c99b62a90] [RealNodeAddr : 0x0000020c99b62880]
+[986482] [Thread ID : 09736] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x6db7820c99b62880] [LocalNewNodeAddr : 0x6db9820c99b62a90] [RealNodeAddr : 0x0000020c99b62880]
+[986483] [Thread ID : 08396] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x6db7820c99b62880] [LocalNewNodeAddr : 0x6db9020c99b62a90] [RealNodeAddr : 0x0000020c99b62880]
+
+[986484] [Thread ID : 09736] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x6db9020c99b62a90] [LocalNewNodeAddr : 0x6db9820c99b62a60] [RealNodeAddr : 0x0000020c99b62a90]
+[986485] [Thread ID : 09736] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x6db9020c99b62a90] [LocalNewNodeAddr : 0x6db9820c99b62a60] [RealNodeAddr : 0x0000020c99b62a90]
+
+[986486] [Thread ID : 08396] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x6db9820c99b62a60] [LocalNewNodeAddr : 0x6dba020c99b62af0] [RealNodeAddr : 0x0000020c99b62a60]
+[986487] [Thread ID : 08396] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x6db9820c99b62a60] [LocalNewNodeAddr : 0x6dba020c99b62af0] [RealNodeAddr : 0x0000020c99b62a60]
+
+[986488] [Thread ID : 09736] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x6dba020c99b62af0] [LocalNewNodeAddr : 0x6dba820c99b627c0] [RealNodeAddr : 0x0000020c99b62af0]
+[986489] [Thread ID : 09736] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x6dba020c99b62af0] [LocalNewNodeAddr : 0x6dba820c99b627c0] [RealNodeAddr : 0x0000020c99b62af0]
+
+
+[986490] [Thread ID : 08396] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x6db8820c99b62af0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b62af0]
+
+
+[986491] [Thread ID : 09736] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x6db8820c99b62af0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b62af0]
+[986492] [Thread ID : 09736] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x6db8820c99b62af0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b62af0]
+[986493] [Thread ID : 09736] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x6db8820c99b62af0] [LocalNewNodeAddr : 0x6dbb820c99b62a60] [RealNodeAddr : 0x0000000000000000]
+[986494] [Thread ID : 09736] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x6db8820c99b62af0] [LocalNewNodeAddr : 0x6dbb820c99b62a60] [RealNodeAddr : 0x0000020c99b62af0]
+
+[986495] [Thread ID : 09736] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x6dbb820c99b62a60] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b62a60]
+[986496] [Thread ID : 09736] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x6dbb820c99b62a60] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000020c99b62a60]
+[986497] [Thread ID : 09736] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x6dbb820c99b62a60] [LocalNewNodeAddr : 0x6dbc020c99b62a90] [RealNodeAddr : 0x0000000000000000]
+[986498] [Thread ID : 09736] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x6dbb820c99b62a60] [LocalNewNodeAddr : 0x6dbc020c99b62a90] [RealNodeAddr : 0x0000020c99b62a60]
+
+
+- 이때 큐의 노드 변화를 보고 Dequeue 초기에 큐 상태를 볼 수 있음. 그래서 그걸 그려보면 아래와 같음. 여기서 마지막에 Dequeue한게 0x0000020c99b62af0 이 노드를 빼버리고 새로운 head를
+  0x6dba820c99b627c0로 바꾼 것임. 그런데 Enqueue할 때 노드값을 보니 직전에 Dequeue할때 빼버린 노드를 tail로 보고 있음. 지금 실제 tail은 0x6dba820c99b627c0임.
+- 그러면 다음번 Enqueue를 할 때 head, tail이 같은 노드일 것임.
+[Head : 0x6db7820c99b62880] -> [0x0000020c99b62a90] - > [ 0x0000020c99b62a60] -> [0x0000020c99b62af0] ->[tail : 0x6dba820c99b627c0]
+[head / tail : 0x6dba820c99b627c0]
+
+- 갑자기 tail을 잘못 본 것임. 이미 메모리 풀에 반환한 노드를 tail로 바라봤음. 8396 스레드가 tail을 잘못 보고 이 스레드가 직전에 Dequeue해서 빼버린 그 노드를 메모리 풀에서 들고 온 순간
+  잠깐 스레드가 멈추고 다른 스레드인 9736 스레드가 Enqueue를 진행하다가 8396 스레드가 Enqueue작업할때 tail이랑 newnode가 같아서 중단점 걸리게 된 것임.
+
+- 그러면 애초에 지금 tail이 잘못 설정되었다는 생각을 해볼 수 있음.
+[Head : 0x6db7820c99b62880] -> [0x0000020c99b62a90] - > [ 0x0000020c99b62a60] -> [0x0000020c99b62af0] ->[tail : 0x6dba820c99b627c0] 이게 아니라
+
+[Head : 0x6db7820c99b62880] -> [0x0000020c99b62a90] - > [ 0x0000020c99b62a60] -> [tail : 0x0000020c99b62af0] ->[0x6dba820c99b627c0] 이 상태인 것임.
+
+- 그러면 언제 잘못 설정되었을까? tail->next가 nullptr이 아닐때 m_pTail일 바꾸는 로직에서 무언가 잘못되었을 수도 있다고 생각함. 그래서 그 로그가 찍힌 곳을 찾아서 볼것임.
+- 그리고 일단 로그 파일에서 CAS 리턴값에 메모리 로그는 찍는데 파일 남길때 빠져서 저장하게 바꿔야 함.
+- 그래서 다시 로그를 찍어보자.
+- 어쨌든 문제가 발생한게 tail을 제대로 못바꾼것은 이전 로그 파일로 확인할 수 있음.
+- 다시 생각해보자 지금 어쨌든 Enqueue에서 Tail을 제대로 못바꾸면 Enqueue할때 사전작업에서 tail을 미뤄주는 것으로 했는데 만약에 이 상태가 Enqueue의 마지막 작업으로 인해 발생해서
+  다음 작업이 Dequeue라고 한다면 Dequeue 할때 저 못바꾼 tail노드까지 큐에서 빼버린 상태에서 다음에 Enqueue 작업을 해야 하는데 이미 반납된 노드를 tail노드로 바라보고 작업을 하게 될 것임.
+- 그래서 이 상황 막으려면 결국 Dequeue에서도 사전에 tail을 바꿔주는 작업 해주고 본인 Dequeue 작업을 해야 할 것임.
+
+- 그리고 또 고려할게 사전작업시 tail바꿀 때 tag값 설정에 대한 고민도 해야 함. tag라는게 결국 tail 노드가 재사용된건지 안된건지 확인하기 위한 용도임. 그러면 일단 그당시 tail노드였던 것의 tag를
+  때서 tail 옮길 때 그걸로 옮기도록 함.
+
+- 그래도 realTail과 newNode가 같은 상황이 발생함.
+- 일단 아래 로그에서 보이는 문제점이 Enqueue 사전 작업시 tail을 저장하려는데 tag가 없음. 생각해보니 로직이 tag를 때고 <<47를 하는데 애초에 tag를 밀 필요 없이 tag때고 바로 | 연산하면 됨.
+ 
+[1911229] [Thread ID : 09744] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x0000023081b50bd0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000023081b50bd0] [RetCAS : 0x0000000000000000]
+
+
+ 
+[1911230] [Thread ID : 09328] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x0000023081b50bd0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000023081b50bd0] [RetCAS : 0x0000000000000000] 
+[1911231] [Thread ID : 09328] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x0000023081b50bd0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000023081b50bd0] [RetCAS : 0xe59a023081b50930] 
+[1911232] [Thread ID : 09328] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x0000023081b50bd0] [LocalNewNodeAddr : 0xe592823081b50a20] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0xe59a023081b50930] 
+[1911233] [Thread ID : 09328] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x0000023081b50bd0] [LocalNewNodeAddr : 0xe592823081b50a20] [RealNodeAddr : 0x0000023081b50bd0] [RetCAS : 0x0000023081b50bd0]
+ 
+[1911234] [Thread ID : 09328] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0xe592823081b50a20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000023081b50a20] [RetCAS : 0xe592800000000000] 
+[1911235] [Thread ID : 09328] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0xe599823081b509c0] [LocalNewNodeAddr : 0xe59b023081b50a50] [RealNodeAddr : 0x0000023081b509c0] [RetCAS : 0x0000000000000000] 
+[1911236] [Thread ID : 09328] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0xe599823081b509c0] [LocalNewNodeAddr : 0xe59b023081b50a50] [RealNodeAddr : 0x0000023081b509c0] [RetCAS : 0x0000000000000000] 
+
+[1911237] [Thread ID : 09328] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0xe592823081b50a20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000023081b50a20] [RetCAS : 0xe592800000000000] 
+[1911238] [Thread ID : 09328] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0xe59b023081b50a50] [LocalNewNodeAddr : 0xe59b823081b50930] [RealNodeAddr : 0x0000023081b50a50] [RetCAS : 0x0000000000000000] 
+[1911239] [Thread ID : 09328] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0xe59b023081b50a50] [LocalNewNodeAddr : 0xe59b823081b50930] [RealNodeAddr : 0x0000023081b50a50] [RetCAS : 0x0000000000000000] 
+
+[1911240] [Thread ID : 09328] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0xe592823081b50a20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000023081b50a20] [RetCAS : 0xe592800000000000] 
+[1911241] [Thread ID : 09328] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0xe592823081b50a20] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000023081b50a20] [RetCAS : 0x0000023081b50a20] 
+[1911242] [Thread ID : 09328] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0xe592823081b50a20] [LocalNewNodeAddr : 0xe59c023081b50a50] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000023081b50a20] 
+[1911243] [Thread ID : 09328] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0xe592823081b50a20] [LocalNewNodeAddr : 0xe59c023081b50a50] [RealNodeAddr : 0x0000023081b50a20] [RetCAS : 0xe592823081b50a20]
+ 
+[1911244] [Thread ID : 09328] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0xe59c023081b50a50] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000023081b50a50] [RetCAS : 0xe59c000000000000] 
+[1911245] [Thread ID : 09328] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0xe59c023081b50a50] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000023081b50a50] [RetCAS : 0x0000023081b50a20] 
+[1911246] [Thread ID : 09328] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0xe59c023081b50a50] [LocalNewNodeAddr : 0xe59c823081b509c0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000023081b50a20] 
+[1911247] [Thread ID : 09328] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0xe59c023081b50a50] [LocalNewNodeAddr : 0xe59c823081b509c0] [RealNodeAddr : 0x0000023081b50a50] [RetㄴCAS : 0xe59c023081b50a50] 
+
+
+- 로그 파일 5를 보자. 또 tailNode와 newNode가 같아지는 상황이 발생함. 이 로그가 가장 마지막 로그인데 이전처럼 지금 Dequeue해서 노드를 반납하고 Enqueue를 하려는데 tail이 안바뀐 상태임. 그래서 반납한
+  그래서 tail변수에는 반납된 노드의 주소가 들어가 있고 Enqueue를 하려고 메모리 풀에서 꺼내서 newNode next를 nullptr로 초기화 하니 Enqueue할때 next를 보니 nullptr인 것임.
+
+[2205517] [Thread ID : 06456] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x98ed01db2b810b70] [LocalNewNodeAddr : 0x98ed81db2b810f30] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x0000000000000000] 
+[2205519] [Thread ID : 06456] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x98ed01db2b810b70] [LocalNewNodeAddr : 0x98ed81db2b810f30] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x0000000000000000]
+[2205520] [Thread ID : 06456] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d501db2b810b70] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x98d5000000000000]
+
+- 혼자 Enqueue, Dequeue한 로직을 어차피 의미가 없고 다른 스레드랑 섞인 로그를 봐야 함. 그래서 가장 최신에 섞인 로그를 볼 것임.
+
+[2205319] [Thread ID : 06456] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d001db2b810f60] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810f60] [RetCAS : 0x98d0000000000000] 
+[2205320] [Thread ID : 06456] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x98d001db2b810f60] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810f60] [RetCAS : 0x000001db2b810f60] 
+[2205321] [Thread ID : 06456] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x98d001db2b810f60] [LocalNewNodeAddr : 0x98d181db2b810990] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x000001db2b810f60] 
+[2205322] [Thread ID : 06456] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x98d001db2b810f60] [LocalNewNodeAddr : 0x98d181db2b810990] [RealNodeAddr : 0x000001db2b810f60] [RetCAS : 0x98d001db2b810f60] 
+
+
+[2205323] [Thread ID : 16260] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d181db2b810990] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x98d1800000000000] 
+[2205324] [Thread ID : 16260] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x98d181db2b810990] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x000001db2b810fc0] 
+[2205325] [Thread ID : 16260] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x98d181db2b810990] [LocalNewNodeAddr : 0x98d201db2b810b70] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x000001db2b810fc0] 
+
+
+[2205326] [Thread ID : 06456] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d181db2b810990] [LocalNewNodeAddr : 0x000001db2b810b70] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x98d1800000000000]
+ 
+[2205327] [Thread ID : 16260] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x98d181db2b810990] [LocalNewNodeAddr : 0x98d201db2b810b70] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x98d181db2b810990] 
+
+- 여기까지 했을 때 16260 스레드가 먼저 tail을 바꿔서 아래에서 6456이 tail 바꾸는 작업은 실패함. 여기까지 큐 상태는
+[810f60] -> [810990]->[tail : 810b70]
+
+[2205328] [Thread ID : 06456] [Enqueue] [LogicTime : 4] [LocalNodeAddr : 0x98d181db2b810990] [LocalNewNodeAddr : 0x98d181db2b810b70] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x98d201db2b810b70]
+
+- Dequeue 사전 작업시 tail 밀어주는데 어차피 tail next가 nullptr이라서 나감
+[2205329] [Thread ID : 16260] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x98d181db2b810b70] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x98d1800000000000] 
+
+
+- 6456 스레드도 tail 제대로 봤으니 이제 탈출해서 1stCAS하러 감. 
+[2205330] [Thread ID : 06456] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d181db2b810b70] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x98d1800000000000] 
+[2205331] [Thread ID : 06456] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x98d181db2b810b70] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x98d201db2b810b70] 
+
+- 이때 HEAD까지 고려한 큐 상태가
+[Head : 810fc0] ->[810f60] -> [810990]->[tail : 810b70]
+[2205332] [Thread ID : 16260] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x98d101db2b810fc0] [LocalNewNodeAddr : 0x98d301db2b810f60] [RealNodeAddr : 0x000001db2b810fc0] [RetCAS : 0x0000000000000000] 
+[2205333] [Thread ID : 16260] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x98d101db2b810fc0] [LocalNewNodeAddr : 0x98d301db2b810f60] [RealNodeAddr : 0x000001db2b810fc0] [RetCAS : 0x0000000000000000] 
+
+[Head : 810f60] -> [810990]->[tail : 810b70]
+[2205334] [Thread ID : 06456] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x98d181db2b810b70] [LocalNewNodeAddr : 0x98d281db2b810f30] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x98d201db2b810b70] 
+[2205335] [Thread ID : 06456] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x98d181db2b810b70] [LocalNewNodeAddr : 0x98d281db2b810f30] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x98d181db2b810b70] 
+
+- 위 Enqueue 작업 했을 때 큐 상태가 아래와 같음.
+[Head : 810f60] -> [810990]->[810b70] -> [tail : 810f30]
+
+[2205336] [Thread ID : 06456] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x98d281db2b810f30] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810f30] [RetCAS : 0x98d2800000000000] 
+
+[2205337] [Thread ID : 16260] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x98d281db2b810f30] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810f30] [RetCAS : 0x98d2800000000000] 
+
+[2205338] [Thread ID : 06456] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x98d301db2b810f60] [LocalNewNodeAddr : 0x98d381db2b810990] [RealNodeAddr : 0x000001db2b810f60] [RetCAS : 0x0000000000000000] 
+
+[2205339] [Thread ID : 16260] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x98d301db2b810f60] [LocalNewNodeAddr : 0x98d401db2b810990] [RealNodeAddr : 0x000001db2b810f60] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 2개의 스레드가 서로 Dequeue를 하려 함. 이때 6456 스레드만 성공하고 다른 스레드는 실패함.
+
+[2205340] [Thread ID : 06456] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x98d301db2b810f60] [LocalNewNodeAddr : 0x98d381db2b810990] [RealNodeAddr : 0x000001db2b810f60] [RetCAS : 0x0000000000000000] 
+
+- 이때까지 큐상태가
+ [head : 810990]->[810b70] -> [tail : 810f30]
+
+[2205341] [Thread ID : 16260] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x98d381db2b810990] [LocalNewNodeAddr : 0x98d401db2b810b70] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x0000000000000000] 
+[2205342] [Thread ID : 16260] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x98d381db2b810990] [LocalNewNodeAddr : 0x98d401db2b810b70] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x0000000000000000] 
+
+- 이때까지 큐상태가
+[head : 810b70] -> [tail : 810f30]
+
+[2205343] [Thread ID : 06456] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x98d281db2b810f30] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810f30] [RetCAS : 0x98d2800000000000] 
+[2205344] [Thread ID : 06456] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x98d401db2b810b70] [LocalNewNodeAddr : 0x98d481db2b810f30] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x0000000000000000] 
+[2205345] [Thread ID : 06456] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x98d401db2b810b70] [LocalNewNodeAddr : 0x98d481db2b810f30] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x0000000000000000]
+
+- 이때까지 큐상태가
+ [head / tail : 810f30]
+ 
+[2205346] [Thread ID : 16260] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d281db2b810f30] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810f30] [RetCAS : 0x98d2800000000000] 
+[2205347] [Thread ID : 16260] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x98d281db2b810f30] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810f30] [RetCAS : 0x000001db2b810f30] 
+[2205348] [Thread ID : 16260] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x98d281db2b810f30] [LocalNewNodeAddr : 0x98d501db2b810990] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x000001db2b810f30] 
+[2205349] [Thread ID : 16260] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x98d281db2b810f30] [LocalNewNodeAddr : 0x98d501db2b810990] [RealNodeAddr : 0x000001db2b810f30] [RetCAS : 0x98d281db2b810f30] 
+
+- 이때까지 큐상태가
+ [head : 810f30] -> [tail : 0x98d501db2b810990]
+
+[2205350] [Thread ID : 06456] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d501db2b810990] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x98d5000000000000] 
+[2205351] [Thread ID : 06456] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x98d501db2b810990] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x000001db2b810f30] 
+[2205352] [Thread ID : 06456] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x98d501db2b810990] [LocalNewNodeAddr : 0x98d581db2b810b70] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x000001db2b810f30] 
+- 이때까지 큐상태가
+ [head : 810f30] -> [tail : 0x98d501db2b810990] -> [next : 0x000001db2b810b70]
+
+[2205353] [Thread ID : 16260] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d501db2b810990] [LocalNewNodeAddr : 0x000001db2b810b70] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x98d5000000000000] 
+
+- 이때까지 큐상태가 아래 상태고 16260 스레드가 바라본 tail은 0x98d501db2b810990고 실제 tail은 0x000001db2b810990임.
+ [head : 810f30] -> [0x98d501db2b810990] -> [tail : 0x000001db2b810b70]
+
+
+[2205354] [Thread ID : 06456] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x98d501db2b810990] [LocalNewNodeAddr : 0x98d581db2b810b70] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x98d501db2b810990] 
+[2205355] [Thread ID : 06456] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d581db2b810b70] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x98d5800000000000] 
+[2205356] [Thread ID : 06456] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x98d581db2b810b70] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x000001db2b810f30] 
+[2205357] [Thread ID : 06456] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x98d581db2b810b70] [LocalNewNodeAddr : 0x98d681db2b810fc0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x000001db2b810f30] 
+[2205358] [Thread ID : 06456] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x98d581db2b810b70] [LocalNewNodeAddr : 0x98d681db2b810fc0] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x98d581db2b810b70] 
+
+- 이렇게 쭉 혼자서 Enqueue, Dequeue 하다가 마지막에 아래 로그를 찍고 그 순간에 다른 스레드가 어떤 작업을 했는지가 중요함.
+  아까 16260 스레드는 tail : tail은 0x98d501db2b810990 이고 next를 확인할 때 nullptr이 아님. next를 0x000001db2b810b70로 바라 봤음. 그래서 tail바꾸는 작업을 하는 중임.
+- 그런데 16260 스레드가 잠깐 멈춘사이 6456 스레드가 엄청 Enqueue, Dequeue를 하고 Dequeue할때 16260 스레드가 바라봤던 노드를 반납해버리고 6456 스레드는 Enqueue 작업 들어가고
+  16260 스레드는 InterlockedExchange로 tail을 바꾸는 작업을 하는 것임. 그냥 바꾸는 것임. 근데 이때 바꾸려는 tailNext노드가 아래 로그에 보다 시피 0x000001db2b810b70이 노드인데 
+   6456 스레드가 이미 반납한 노드임. 그런데 그걸로 tail을 바꾸려는 것임.
+
+[2205516] [Thread ID : 06456] [Dequeue] [LogicTime : 3] [LocalNodeAddr : 0x98ec81db2b810990] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810990] [RetCAS : 0x98ec800000000000] 
+[2205517] [Thread ID : 06456] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x98ed01db2b810b70] [LocalNewNodeAddr : 0x98ed81db2b810f30] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x0000000000000000] 
+[2205519] [Thread ID : 06456] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x98ed01db2b810b70] [LocalNewNodeAddr : 0x98ed81db2b810f30] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x0000000000000000]
+
+[2205520] [Thread ID : 06456] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x98d501db2b810b70] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001db2b810b70] [RetCAS : 0x98d5000000000000]
+
+- 사전작업할 때 내가 로컬에 저장한 tail이 진짜 그 당시 tail일때만 바꾸게 만들어야 함. 즉 CAS가 필요함.
+- 그래서 그렇게 만들면 이제 Dequeue에서 head next가 nullptr이 발생함.

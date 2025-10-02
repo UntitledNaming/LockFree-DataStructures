@@ -1,0 +1,41 @@
+1. 이전 문제 개선점
+- 일단 1번 스레드가 1st CAS 전에 저장한 tailNode 주소값을 가지고 다른 스레드가 그 노드를 Deq하고 Enq하면서 재활용해서 1st CAS 하고 2nd CAS로 tailNode까지 바꿨는데 1번 스레드는
+   1st CAS 통과해도 그걸 인지를 못해서 2nd CAS를 실패하기 때문에 1st CAS 성공하고 나서 tailNode를 다시 한번 재 갱신해서 그걸로 2nd CAS를 하도록 만들 었음.
+
+2. 문제 상황 분석
+- 그래도 2nd CAS는 실패함.
+- 아래 로그를 분석하면 원인을 알 수 있음.
+- 우선 8112 스레드가 tailNode를 저장할 때 그 때 주소값이 0x5bd50180078df930(0x00000180078df930)인데 1st CAS 못하고 다른 스레드인 14724 스레드가 먼저 1st CAS를 통과하고 
+   2nd CAS까지 해서 Enqueue작업을 성공함.
+- 그런데 같은 스레드인 14724 스레드가 Dequeue를 3번을 진행해서 마지막으로 메모리 풀에 반납한 노드 주소가 0x00000180078df930임. 즉, 8112 스레드가 tailNode로 바라봤더 노드를
+   메모리 풀에 반납함. 
+- 그런데 같은 스레드인 14724 스레드가 다시 Enqueue 작업을 할려고 메모리 풀에서 노드를 가져와서 1st CAS를 성공하는데 이때 0x5bd78180078df930(0x00000180078df930)로 tail->Next를
+  바꾸고 8112 스레드도 문제점 분석2에서 말했다 시피 본인이 저장한 tailNode가 그때의 tailNode가 아닌데 1st CAS를 성공함.
+- 14724 스레드와 8112 스레드가 1st CAS를 성공하고 tailNode를 재갱신하는데 그 값을 로깅해 보니 같은 노드 주소값인 0x5bd58180078dfb70임. 즉, 각각의 스레드가 이때 같은 tailNode를
+   바라 보고 있음. 그리고 먼저 들어온 14724 스레드가 2nd CAS는 성공하는데 나중에 들어온 8112 스레드는 실패해서 로그를 남김.
+- 이게 문제가 뭐냐면 실제 큐 맨 뒤 노드는 8112 스레드가 붙인 노드인데 지금 2nd CAS에서 경합 생기면서 나중에 들어와서 큐 맨 뒤에 노드 붙인 스레드가 tailNode 변수를 본인 노드로 바꿔야 하는데
+   그걸 못하고 먼저 1st CAS 성공한 스레드가 2nd CAS를 성공해버리면서 tailNode에 저장된 변수가 실제 큐 맨 뒤 노드가 아니라 그 앞 노드의 주소가 저장되어 버림.
+- 이게 진짜 문제임.
+   
+[459245] [Thread ID : 08112] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x5bd50180078df930] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x00000180078df930]
+[459246] [Thread ID : 14724] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x5bd50180078df930] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x00000180078df930]
+[459247] [Thread ID : 14724] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x5bd50180078df930] [LocalNewNodeAddr : 0x5bd58180078dfb70] [RealNodeAddr : 0x00000180078df930]
+[459248] [Thread ID : 14724] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x5bd50180078df930] [LocalNewNodeAddr : 0x5bd58180078dfb70] [RealNodeAddr : 0x00000180078df930]
+
+
+[459249] [Thread ID : 14724] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x5bd38180078dfcc0] [LocalNewNodeAddr : 0x5bd60180078dfb10] [RealNodeAddr : 0x00000180078dfcc0]
+[459250] [Thread ID : 14724] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x5bd38180078dfcc0] [LocalNewNodeAddr : 0x5bd60180078dfb10] [RealNodeAddr : 0x00000180078dfcc0]
+[459251] [Thread ID : 14724] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x5bd60180078dfb10] [LocalNewNodeAddr : 0x5bd68180078df930] [RealNodeAddr : 0x00000180078dfb10]
+[459252] [Thread ID : 14724] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x5bd60180078dfb10] [LocalNewNodeAddr : 0x5bd68180078df930] [RealNodeAddr : 0x00000180078dfb10]
+[459253] [Thread ID : 14724] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x5bd68180078df930] [LocalNewNodeAddr : 0x5bd70180078dfb70] [RealNodeAddr : 0x00000180078df930]
+[459254] [Thread ID : 14724] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x5bd68180078df930] [LocalNewNodeAddr : 0x5bd70180078dfb70] [RealNodeAddr : 0x00000180078df930]
+
+[459255] [Thread ID : 14724] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x5bd58180078dfb70] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x00000180078dfb70]
+[459256] [Thread ID : 14724] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x5bd58180078dfb70] [LocalNewNodeAddr : 0x5bd78180078df930] [RealNodeAddr : 0x00000180078dfb70]
+[459257] [Thread ID : 08112] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x5bd58180078dfb70] [LocalNewNodeAddr : 0x5bd40180078df8a0] [RealNodeAddr : 0x00000180078dfb70]
+[459258] [Thread ID : 14724] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x5bd58180078dfb70] [LocalNewNodeAddr : 0x5bd78180078df930] [RealNodeAddr : 0x00000180078dfb70]
+[459259] [Thread ID : 08112] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x5bd78180078df930] [LocalNewNodeAddr : 0x5bd50180078df930] [RealNodeAddr : 0x00000180078dfb70]
+
+- 지금 2nd CAS에 경합 생기는 것을 진짜로 확인하기 위해 전역변수 1개 두고 interlockedIncrement로 2nd CAS 직전에 증가시키고 2nd CAS 후 감소시켜서 리턴값이 1인지 0인지 체크해서
+ 아닐 때 debugbreak걸어서 잡아 볼 것임. 
+- 해당 캡처한 사진 자료 보면 지금 경쟁이 발생해서 각각의 스레드가 1st CAS 후에 같이 들어와 있는게 보일 것임.

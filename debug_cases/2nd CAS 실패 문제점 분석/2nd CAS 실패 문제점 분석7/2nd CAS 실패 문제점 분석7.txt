@@ -1,0 +1,176 @@
+1.< 대안6 : 2ndCAS 실패시 m_pTail을 조정하기>
+- 다시 진짜 문제가 되는 부분을 해결하는 방법을 생각해보자.
+지금 결국에는 문제가 되는 상황이 먼저 1st CAS 한 스레드가 2ndCAS까지 해버리고 뒤늦게 1stCAS들어온 스레드가 2ndCAS를 성공해서 tail을 잘 바꿔줘야 하는데 못바꿔버리는 상황임.
+그러면 tail의 next가 영영 nullptr이 안되는 상황이 될 것임.
+
+- 그러면 결국 2ndCAS를 실패하는 스레드가 tail을 바꿔줘야 함. 그러면 단순히 2ndCAS실패하면 자기가 붙이려던 newNode로 tail을 바꾸는 것은 먼저 1stCAS한 스레드가 이 로직으로 인해
+  2ndCAS실패해서 자기 newNode로 tail을 바꿔버릴 것임.
+- 일단 로직을 2ndCAS 실패시 반환되는 그 당시의 m_pTail을 가지고 next를 구해서 nullptr이면 next가 nullptr인 노드를 새로운 tail로 만드는 것임.
+
+
+2. <대안 7 : 아니면 애초에 1stCAS할 때 조정>
+- 애초에 지금 문제가 되던게 1번 스레드가 tail을 로컬에 저장하고 그 순간 2번 스레드가 해당 tail노드를 Dequeue에서 빼버리고 Enqueue할 때 재활용해서 1stCAS에서 붙여버리고
+   나서 1번 스레드가 그걸 인지를 못해버리는 것임.
+- 1stCAS 직전 사전 작업으로 tail이랑 tailNext를 로컬에 저장하고 tailNext가 nullptr일 때 tail을 다시 저장하는 것임. 그러면 1번 스레드가 tail을 로컬에 저장하고 그 순간 2번 스레드가
+   Enqueue, Dequeue를 여러번 해서 그 당시 tail노드를 재활용해서 Enqueue 할때 1stCAS에서 붙여버리고 1번 스레드는 로컬에 저장한 tail 노드에서 tag때고 next가 nullptr이니
+   if문을 들어가서 루프 탈출하려는데 이때 로컬 Tail을 재갱신 하는 것임.
+- 그러면 1번 스레드도 1stCAS를 통과할 수는 있음. 어차피 next가 nullptr인지만 보는것이기 때문임.
+- 그러면 먼저 1stCAS한 스레드가 2ndCAS를 해버리고 tail을 바꿨으면 뒤이어 1stCAS한 스레드는 2ndCAS를 실패할 것임.
+- 이 방식은 아님. 
+
+
+3.<대안 8 : 1st CAS전에 1stCAS를 하기 전에 내가 바라보던 tail의 next가 nullptr이 아니면 tail을 직접 조정>
+- 결국 기존 base 구조에서 먼저 1stCAS한 스레드가 2ndCAS를 해버리면 tail이 맨 뒤 노드의 앞 노드로 tail이 바뀌게 되고 뒤이어 1stCAS한 스레드가 2ndCAS를 하려고 해도
+   m_pTail이랑 localTail이랑 달라서 어차피 실패함. 그러니 tailNode의 next가 영영 nullptr를 가리키지 못함.
+- 이로 인해 다음에 Enqueue를 하려는 스레드가 tail의 next를 보는데 nullptr이 아니게 되는 것임. 그래서 1stCAS를 못하는것임.
+- 그래서 차라리 2ndCAS를 실패해서 tail을 잘못바꾼 껏은 그냥 Pass해버리고 보정을 1stCAS를 하려는 놈들이 알아서 해서 하는 것임.
+
+//사전 작업
+//멤버 변수 tail 및 next 저장
+while (1)
+{
+	localTail = m_pTail;
+	tailTag = ((uint64_t)localTail & (!BITMASK));
+	realTail = (Node*)((uint64_t)localTail & BITMASK);
+
+	localTailNext = realTail->_next;
+
+	if (localTailNext != nullptr)
+	{
+		localTailNext = (Node*)((UINT64)localTailNext | (tailTag << 47));
+		InterlockedExchange64((volatile __int64*)&m_pTail, (__int64)localTailNext);
+		continue;
+	}
+	break;
+}
+
+- 이렇게 했을 때 문제는 tail : 0x000001ea8b71f9c0인데 next를 보니 0x000001ea8b71f9c0 자기 자신이 되는 문제가 발생함.
+
+
+[397028] [Thread ID : 06048] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x316a012a34650240] [LocalNewNodeAddr : 0x316a812a3464ff40] [RealNodeAddr : 0x0000012a34650240]
+[397029] [Thread ID : 06048] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x316a012a34650240] [LocalNewNodeAddr : 0x316a812a3464ff40] [RealNodeAddr : 0x0000012a34650240]
+[397030] [Thread ID : 06048] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x3168812a3464ff40] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000012a3464ff40]
+[397031] [Thread ID : 06048] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x3168812a3464ff40] [LocalNewNodeAddr : 0x316b812a34650240] [RealNodeAddr : 0x0000000000000000]
+[397032] [Thread ID : 06048] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x3168812a3464ff40] [LocalNewNodeAddr : 0x316b812a34650240] [RealNodeAddr : 0x0000012a3464ff40]
+
+[397033] [Thread ID : 06048] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x316b812a34650240] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000012a34650240]
+[397034] [Thread ID : 06048] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x316b812a34650240] [LocalNewNodeAddr : 0x316c012a34650000] [RealNodeAddr : 0x0000000000000000]
+[397035] [Thread ID : 06048] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x316b812a34650240] [LocalNewNodeAddr : 0x316c012a34650000] [RealNodeAddr : 0x0000012a34650240]
+
+[397036] [Thread ID : 06048] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x316a812a3464ff40] [LocalNewNodeAddr : 0x316c812a34650240] [RealNodeAddr : 0x0000012a3464ff40]
+[397037] [Thread ID : 06048] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x316a812a3464ff40] [LocalNewNodeAddr : 0x316c812a34650240] [RealNodeAddr : 0x0000012a3464ff40]
+[397038] [Thread ID : 06048] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x316c812a34650240] [LocalNewNodeAddr : 0x316d012a34650000] [RealNodeAddr : 0x0000012a34650240]
+[397039] [Thread ID : 06048] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x316c812a34650240] [LocalNewNodeAddr : 0x316d012a34650000] [RealNodeAddr : 0x0000012a34650240]
+
+[397040] [Thread ID : 06048] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x0000012a34650240] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000012a34650240]
+[397041] [Thread ID : 06048] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x0000012a34650240] [LocalNewNodeAddr : 0x316d812a34650240] [RealNodeAddr : 0x0000000000000000]
+[397042] [Thread ID : 06048] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x0000012a34650240] [LocalNewNodeAddr : 0x316d812a34650240] [RealNodeAddr : 0x0000012a34650240]
+
+
+- 로그를 보면 Enqueue하면서 아래처럼 큐가 되었는데 마지막에 Enqueue해서 로컬 Node를 찍어보니 메모리 풀에서 반납했고 그걸 재활용해서 내가 Enqueue할때 newNode로 사용할 노드가 
+   tail노드 로그로 찍혀버림. 즉, 일단 여기 말고 다른 스레드랑 경합상황에서 꼬인듯함.
+
+[0x3168812a3464ff40] -> [0x316b812a34650240] - > [0x316c012a34650000]
+[Head]                                                                        [Tail ]
+
+
+ [0x316b812a34650240] - > [0x316c012a34650000]
+[Head]                                  [Tail ]
+
+[0x316c012a34650000]->nullptr
+[Head]     [Tail ]
+
+
+[tailNode : 0x0000012a34650240]?
+[newNode : 0x0000012a34650240]
+
+
+
+- 지금 특이점이 되는 노드 주소가 0x0000012a34650240임. 그 위에 있던 로그인 아래 로그도 같이보자.
+   
+
+[397013] [Thread ID : 06048] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x3167012a34650000] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000012a34650000]
+[397014] [Thread ID : 06048] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x3167012a34650000] [LocalNewNodeAddr : 0x3167812a34650270] [RealNodeAddr : 0x0000000000000000]
+[397015] [Thread ID : 06048] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x3167012a34650000] [LocalNewNodeAddr : 0x3167812a34650270] [RealNodeAddr : 0x0000012a34650000]
+
+[397016] [Thread ID : 04264] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x3167812a34650270] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000012a34650270]
+[397017] [Thread ID : 04264] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x3167812a34650270] [LocalNewNodeAddr : 0x3168012a34650240] [RealNodeAddr : 0x0000000000000000]
+[397018] [Thread ID : 04264] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x3167812a34650270] [LocalNewNodeAddr : 0x3168012a34650240] [RealNodeAddr : 0x0000012a34650270]
+
+
+- 위 행동까지 했을 때 큐는 일단 아래 구조임.
+[0x3167012a34650000] -> [0x3167812a34650270] -> [tail : 0x3168012a34650240]
+                                                                                  
+- 이때 4264 스레드가 Dequeue하려고 할때 바라본 head를 고려하면 
+[head: 0x3166812a346500f0] ->[0x3167012a34650000] -> [0x3167812a34650270] -> [tail : 0x3168012a34650240]
+
+
+[397019] [Thread ID : 06048] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x3168012a34650240] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000012a34650240]
+[397020] [Thread ID : 04264] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x3166812a346500f0] [LocalNewNodeAddr : 0x3169012a34650000] [RealNodeAddr : 0x0000012a346500f0]
+
+[397021] [Thread ID : 06048] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x3168012a34650240] [LocalNewNodeAddr : 0x3168812a3464ff40] [RealNodeAddr : 0x0000000000000000]
+[397022] [Thread ID : 06048] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x3168012a34650240] [LocalNewNodeAddr : 0x3168812a3464ff40] [RealNodeAddr : 0x0000012a34650240]
+
+- 여기까지 했을 때 
+[head: 0x3166812a346500f0] ->[0x3167012a34650000] -> [0x3167812a34650270] -> [0x3168012a34650240] -> [tail : 0x3168812a3464ff40]
+
+[397023] [Thread ID : 04264] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x3166812a346500f0] [LocalNewNodeAddr : 0x3169012a34650000] [RealNodeAddr : 0x0000012a346500f0]
+[397024] [Thread ID : 06048] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x3169012a34650000] [LocalNewNodeAddr : 0x3169812a34650270] [RealNodeAddr : 0x0000012a34650000]
+[397025] [Thread ID : 06048] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x3169012a34650000] [LocalNewNodeAddr : 0x3169812a34650270] [RealNodeAddr : 0x0000012a34650000]
+
+- 여기까지 하면 아래 상태임.
+[head : 0x3167812a34650270] -> [0x3168012a34650240] -> [tail : 0x3168812a3464ff40]
+
+[397026] [Thread ID : 04264] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x3169812a34650270] [LocalNewNodeAddr : 0x316a012a34650240] [RealNodeAddr : 0x0000012a34650270]
+[397027] [Thread ID : 04264] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x3169812a34650270] [LocalNewNodeAddr : 0x316a012a34650240] [RealNodeAddr : 0x0000012a34650270]
+
+
+[397028] [Thread ID : 06048] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x316a012a34650240] [LocalNewNodeAddr : 0x316a812a3464ff40] [RealNodeAddr : 0x0000012a34650240]
+[397029] [Thread ID : 06048] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x316a012a34650240] [LocalNewNodeAddr : 0x316a812a3464ff40] [RealNodeAddr : 0x0000012a34650240]
+
+[397030] [Thread ID : 06048] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x3168812a3464ff40] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000012a3464ff40]
+[397031] [Thread ID : 06048] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x3168812a3464ff40] [LocalNewNodeAddr : 0x316b812a34650240] [RealNodeAddr : 0x0000000000000000]
+[397032] [Thread ID : 06048] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x3168812a3464ff40] [LocalNewNodeAddr : 0x316b812a34650240] [RealNodeAddr : 0x0000012a3464ff40]
+
+- 여기까지도 딱히 문제는 없어 보임. 여기까지 했을 때 아래 상태임.
+ [head :0x316a812a3464ff40]-> [tail : 0x316b812a34650240]
+
+
+ - 이때 아래 로직 수행되다 꼬이는데
+
+[397033] [Thread ID : 06048] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x316b812a34650240] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000012a34650240]
+[397034] [Thread ID : 06048] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x316b812a34650240] [LocalNewNodeAddr : 0x316c012a34650000] [RealNodeAddr : 0x0000000000000000]
+[397035] [Thread ID : 06048] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x316b812a34650240] [LocalNewNodeAddr : 0x316c012a34650000] [RealNodeAddr : 0x0000012a34650240]
+
+- 여기까지 하면
+ [head : 0x316a812a3464ff40]-> [ 0x316b812a34650240] ->[tail : 0x316c012a34650000]
+
+
+
+
+[397036] [Thread ID : 06048] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x316a812a3464ff40] [LocalNewNodeAddr : 0x316c812a34650240] [RealNodeAddr : 0x0000012a3464ff40]
+[397037] [Thread ID : 06048] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x316a812a3464ff40] [LocalNewNodeAddr : 0x316c812a34650240] [RealNodeAddr : 0x0000012a3464ff40]
+[397038] [Thread ID : 06048] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x316c812a34650240] [LocalNewNodeAddr : 0x316d012a34650000] [RealNodeAddr : 0x0000012a34650240]
+[397039] [Thread ID : 06048] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x316c812a34650240] [LocalNewNodeAddr : 0x316d012a34650000] [RealNodeAddr : 0x0000012a34650240]
+
+- 위 2번의 Dequeue를 하면 
+
+[head / tail : 0x316d012a34650000]
+ 
+
+[397040] [Thread ID : 06048] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x0000012a34650240] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x0000012a34650240]
+[397041] [Thread ID : 06048] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x0000012a34650240] [LocalNewNodeAddr : 0x316d812a34650240] [RealNodeAddr : 0x0000000000000000]
+[397042] [Thread ID : 06048] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x0000012a34650240] [LocalNewNodeAddr : 0x316d812a34650240] [RealNodeAddr : 0x0000012a34650240]
+
+
+
+
+
+
+
+
+
+
+
+
+

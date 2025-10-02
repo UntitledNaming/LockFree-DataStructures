@@ -1,0 +1,57 @@
+1. 그래서 Dequeue에서 했던 코드를 그냥 Enqueue에서 2nd CAS까지 다하고 나가기 직전에 넣었음. 그런데 문제가 발생함.
+- 아래 로그를 보자. 
+
+[14307] [Thread ID : 07312] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x07a501efe363d0f0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001efe363d0f0] [RetCAS : 0x07a5000000000000] 
+[14308] [Thread ID : 07312] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x07a501efe363d0f0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001efe363d0f0] [RetCAS : 0x0000000000000000] 
+[14309] [Thread ID : 07312] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x07a501efe363d0f0] [LocalNewNodeAddr : 0x07a581efe363d6f0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+
+
+- 여기까지 해서
+[tail : 0x07a501efe363d0f0] -> [ 0x07a581efe363d6f0]
+
+[14310] [Thread ID : 07904] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x07a501efe363d0f0] [LocalNewNodeAddr : 0x000001efe363d6f0] [RealNodeAddr : 0x000001efe363d0f0] [RetCAS : 0x07a5000000000000] 
+[14311] [Thread ID : 07904] [Enqueue] [LogicTime : 4] [LocalNodeAddr : 0x07a501efe363d0f0] [LocalNewNodeAddr : 0x07a501efe363d6f0] [RealNodeAddr : 0x000001efe363d0f0] [RetCAS : 0x07a501efe363d0f0] 
+
+- 그 순간 7904 스레드가 사전작업을 하면서 tail을 밀어버림.
+[0x07a501efe363d0f0] -> [tail : 0x07a581efe363d6f0]
+
+
+[14312] [Thread ID : 07312] [Enqueue] [LogicTime : 5] [LocalNodeAddr : 0x07a501efe363d0f0] [LocalNewNodeAddr : 0x07a581efe363d6f0] [RealNodeAddr : 0x000001efe363d0f0] [RetCAS : 0x07a501efe363d6f0] 
+
+- 그래서 7312 스레드가 2ndCAS를 실패하고 
+
+
+[14313] [Thread ID : 07904] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x07a501efe363d6f0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001efe363d6f0] [RetCAS : 0x07a5000000000000] 
+[14314] [Thread ID : 07312] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x07a501efe363d0f0] [LocalNewNodeAddr : 0x07a581efe363d6f0] [RealNodeAddr : 0x000001efe363d0f0] [RetCAS : 0x07a501efe363d6f0] 
+
+- 7904 스레드는 사전작업을 다시 시작하고 7312 스레드는 2ndCAS 실패 후 탈출 전 로그를 찍음.
+
+[14315] [Thread ID : 07904] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x07a501efe363d6f0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001efe363d6f0] [RetCAS : 0x0000000000000000] 
+
+- 7904 스레드가 1stCAS 사전작업을 시작하고 
+
+[14316] [Thread ID : 07312] [Enqueue] [LogicTime : 6] [LocalNodeAddr : 0x07a501efe363d6f0] [LocalNewNodeAddr : 0x000001efe363d0c0] [RealNodeAddr : 0x000001efe363d6f0] [RetCAS : 0x07a5000000000000] 
+[14317] [Thread ID : 07312] [Enqueue] [LogicTime : 7] [LocalNodeAddr : 0x07a501efe363d6f0] [LocalNewNodeAddr : 0x07a501efe363d0c0] [RealNodeAddr : 0x000001efe363d6f0] [RetCAS : 0x07a501efe363d6f0] 
+
+
+- 여기까지 보면 tail을 제대로 바꿨으니 7312 스레드가 바라본 tail의 next는 nullptr일 것임. 그런데 위 로그 보면 아님. 다른 로그가 있음. 7904 스레드가 한 일을 보니 아래 로그 보면 1stCAS를 한것임.
+   즉 7904 스레드가 1stCAS를 해서 tail의 next를 바꾸고 그걸 7312 스레드가 바라본것임. 이때 1st CAS 전 newNode의 next를 0xFFFFFFFFFFFFFFFF로 밀었고 1stCAS후 nullptr로 밀어야 하는데
+   지금 newNode에서 FF 를 1개 빼먹어서 7312 스레드가 Enqueue 나가기 직전에 tail 조정 작업할때 if문으로 체크하는데 nullptr도 아니고 0x00ffffffffffffff라서 또 next를 tail로 바꿔버림. 즉 계산 실수
+
+
+[14318] [Thread ID : 07312] [Enqueue] [LogicTime : 6] [LocalNodeAddr : 0x07a501efe363d0c0] [LocalNewNodeAddr : 0x00ffffffffffffff] [RealNodeAddr : 0x000001efe363d0c0] [RetCAS : 0x07a5000000000000] 
+[14319] [Thread ID : 07312] [Enqueue] [LogicTime : 7] [LocalNodeAddr : 0x07a501efe363d0c0] [LocalNewNodeAddr : 0x07ffffffffffffff] [RealNodeAddr : 0x000001efe363d0c0] [RetCAS : 0x07a501efe363d0c0] 
+[14320] [Thread ID : 07904] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x07a501efe363d6f0] [LocalNewNodeAddr : 0x07a601efe363d0c0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+
+
+
+
+
+
+[14321] [Thread ID : 07904] [Enqueue] [LogicTime : 5] [LocalNodeAddr : 0x07a501efe363d6f0] [LocalNewNodeAddr : 0x07a601efe363d0c0] [RealNodeAddr : 0x000001efe363d6f0] [RetCAS : 0x07ffffffffffffff] 
+[14322] [Thread ID : 07904] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x07a501efe363d6f0] [LocalNewNodeAddr : 0x07a601efe363d0c0] [RealNodeAddr : 0x000001efe363d6f0] [RetCAS : 0x07ffffffffffffff] 
+
+
+
+- 그래서 제대로 수정하고 돌리니 일단 문제 없음. 어떻게 보면 Dequeue에 있던 밀던 작업을 Enqueue 뒤로 가져온 것임.
+- 그리고 tail의 next를 잘못보는 문제는 newNode의 next를 nullptr로 밀었기 때문에 발생하는 문제라서 newNode의 next를 FFFF FFFF FFFF FFFF로 밀어 주면 되고 1stCAS하면 nullptr로 밀어주면 됨.

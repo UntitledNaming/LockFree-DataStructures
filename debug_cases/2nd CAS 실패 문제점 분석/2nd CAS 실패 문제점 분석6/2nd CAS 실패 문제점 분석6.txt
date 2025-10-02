@@ -1,0 +1,204 @@
+1. 무한 루프 문제점
+- 14880 스레드는 1st CAS를 통과 못하고 계속 무한 루프 돌고 있음. 이때 tail 노드 주소값이 0x258c014c430a0390임. tag때고 tail->next가 0x0000014c4309ffa0임.
+- 그리고 다른쪽 스레드인 15784 스레드는 newNode가 0x252d014c4309ffa0이고 리턴값이 0x258c014c430a0390임. 그리고 local값이 0x252a814c430a0390임.
+- 지금 문제 시나리오를 생각해보면 local값이 tag값이 낮고 2ndCAS리턴값이 tag값이 높은 것을 보면 지금 1stCAS후 무한 루프 돌고 있는 스레드가 나중에 1stCAS 통과한 스레드로 추측됨.
+- 그래서 시나리오를 생각해보면 먼저 1stCAS한 스레드가 2ndCAS를 그냥 해서 성공하고 리턴값에서 tag때고 next가 nullptr이라서 break로 탈출해버리는 순간 다른 스레드가 1stCAS를 통과하는데 
+   이 스레드가 2ndCAS를 하려는데 m_pTail이 결국 노드3(tag:5)이고 localTail이 노드3(tag:0)인데 2ndCAS해도 다르니까 ret값은 노드3(tag:5)가 발생하니 else문을 타고 다시 continue를 해서 다시
+   2ndCAS를 하는데 어차피 다르니 계속 반복문 도는 것임.
+
+				newNode = (Node*)((UINT64)newNode | (retCnt << 47));
+				while (1)
+				{
+					ret2ndCAS = InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
+
+					retReal2ndCAS = (Node*)((uint64_t)ret2ndCAS & BITMASK);
+
+					if (retReal2ndCAS->_next == nullptr)
+						break;
+					else
+						continue;
+
+					if ((Node*)ret2ndCAS != localTail)
+					{
+						InterlockedExchange64((__int64*)&m_pTail, (__int64)newNode);
+						break;
+					}
+				}
+
+- 그러면 분기를 먼저 if ((Node*)ret2ndCAS != localTail)부터 타고 내부에서 갈라보자. 아래처럼 만들어보자. 이래도 무한루프를 돌고 있음. 같은 상황임. 같은 시나리오를 적용해 보면 먼저 1stCAS한 스레드가
+   2ndCAS 성공해서 if문 분기 안타고 그냥 나가고 뒤늦게 1stCAS한 스레드가 들어와서 2ndCAS를 하려는데 m_pTail이랑 localTail이랑 다를 것임. 그래서 return값이랑 localTail값이랑 다름. 그래서 if문 분기로
+   들어오면 2ndCAS값에서 tag때고 next 찔러봐야 nullptr아니니 그냥 continue되어버림. 똑같은 문제 발생함.
+				while (1)
+				{
+					ret2ndCAS = InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
+
+					retReal2ndCAS = (Node*)((uint64_t)ret2ndCAS & BITMASK);
+
+					if ((Node*)ret2ndCAS != localTail)
+					{
+						if (retReal2ndCAS->_next == nullptr)
+							break;
+						else
+							continue;
+
+						InterlockedExchange64((__int64*)&m_pTail, (__int64)newNode);
+						break;
+					}
+
+					break;
+				}
+
+
+- 그러면 약간 추가적인 변형이 필요할 듯함. 일단 먼저 1stCAS한 스레드가 2ndCAS까지 해서 뒤늦게 1stCAS한 스레드가 그냥 계속 2ndCAS 실패 루프 돌아버리는 것을 막기 위해서 else문에서
+   localTail을 ret2ndCAS로 바꾸고 다시 2ndCAS를 해보자. 지금 else문 타는 상황이 뒤늦게 1stCAS한 스레드가 local에 노드 3(tag:0)이고 ret2ndCAS가 노드 3(tag:5)인 상황이 있을 수 있음. 
+   이 노드 3(tag:5)를 기존의 local로 바꾸고 다시 2ndCAS를 하면 제대로 바꿀 수 있음. 그래서 아래처럼 만들어봄. 이러면 이제는 아예
+				newNode = (Node*)((UINT64)newNode | (retCnt << 47));
+				while (1)
+				{
+					ret2ndCAS = InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
+
+
+					if ((Node*)ret2ndCAS != localTail)
+					{
+						retReal2ndCAS = (Node*)((uint64_t)ret2ndCAS & BITMASK);
+
+						if (retReal2ndCAS->_next == nullptr)
+							break;
+						else
+						{
+							localTail = ret2ndCAS;
+							continue;
+						}
+
+					}
+
+					break;
+				}
+
+
+- 이렇게 되면 이제 아예 1stCAS를 둘다 통과 못함. 
+- 지금 2ndCAS를 실패했을 때 어떻게든 그냥 m_pTail = newNode를 해서 바꾸려는데 차라리 그냥 모든 스레드가 local을 return에서 나오는 기존 m_pTail값의 next로 설정해버리는 것임.
+  그래서 다시 2ndCAS를 해버리는 것임. 먼저 1stCAS한 스레드, 나중에 들어온 스레드 모두 같이 루프를 도는 것임.
+
+
+=============================================================================================================================
+<대안 5. 각 스레드 뺑뺑이 돌면서 next가 nullptr인 노드 찾기>
+- 이것도 그냥 별로 같음. 차라리 먼저 1stCAS한 스레드, 2ndCAS한 스레드 모두 while문을 반복적으로 돌면서 내가 보고 있던 local의 next를 계속 참조하면서 진짜 큐의 마지막 노드를 찾는 것임.
+  그래서 그 노드를 newNode로 해서 2ndCAS를 해버리는 방법은 어떨까?
+
+//각자가 먼저 진짜 큐 마지막 노드 찾기
+localTempTail = localTail;
+newNode = (Node*)((uint64_t)localTempTail & BITMASK);
+while (1)
+{
+	localTailNext = newNode->_next;
+	if (localTailNext == nullptr)
+		break;
+
+	//맨끝 노드가 아니면 newNode변경
+	newNode = localTailNext;
+
+}
+newNode = (Node*)((UINT64)newNode | (retCnt << 47)); 
+
+InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
+
+- 위 처럼 코드를 짰는데 1stCAS에서 무한 루프 돌고 있는 스레드가 1개 있고 2nd CAS전의 루프에서 뺑뺑이 도는 스레드가 있는데 이 스레드가 
+  newNode를 계속 localTailNext로 갱신하는데 문제는 같은 놈임. 무슨말이냐면 
+  localTailNext가 0x000001e88b110d80인데 그걸 다시 newNode로 해서 next를 구하면 0x000001e88b110840임. 그런데 이걸 다시 newNode로 설정해서
+  다음 루프에서 next를 참조해보니  0x000001e88b110d80가 되는 것임. 그래서 무한 루프를 돌고 있음.
+- 로그를 보기 위해 각각의 루프마다 카운트를 만들어서 함수 들어올때 0으로 초기화 하고 만약에 루프카운트가 500 넘어가면 무한루프로 판단해서 더 이상 로그 안남게 할 것임.
+  아래가 특이점이 발생한 로그일 것으로 판단됨. 맨 아래 계속 같은 값 로그 찍는게 한 몇백개 있는데 위쪽만 짤라서 가져온 것임. 
+- 지금 시나리오가 먼저 1stCAS 성공한 스레드가 뺑뺑이 돌면서 본인이 큐 뒤에 붙인 0x8ee1824259012d80의 next를 nullptr로 체크해서 루프 탈출하는 순간
+  2ndCAS 직전에 나중에 1stCAS 성공한 스레드가 들어와서 큐에 노드를 붙이는데 이러면 먼저 1stCAS한 스레드는 자기 노드로 tail을 바꾸고 뒤늦게 1stCAS한 스레드는 뺑뺑이 돌면서
+  마지막 노드 찾았어도 localTail이 달라서 2ndCAS 어차피 실패해버림.
+- 그래서 이 문제를 해결하기 위해 localTail을 계속 갱신할 필요성이 있어 보임. 루프 돌면서 누가 tail바꿨는지 계속 보는 것임. 
+  그러면 만약에 이 루프를 먼저 1stCAS한 스레드랑 나중에 1stCAS한 스레드랑 경합하면서 돈다고 했을 때 나중에 1stCAS한 스레드도 2ndCAS를 성공할 수 있는 것임. 
+
+[188567] [Thread ID : 05528] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x8ede024259012d80] [LocalNewNodeAddr : 0x00000242590128a0] [RealNodeAddr : 0x0000024259012d80]
+[188568] [Thread ID : 15416] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x8ede8242590128a0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x8ede024259012d80]
+[188569] [Thread ID : 15416] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x8edf824259012d50] [LocalNewNodeAddr : 0x8ee0824259012d80] [RealNodeAddr : 0x0000024259012d50]
+[188570] [Thread ID : 15416] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x8edf824259012d50] [LocalNewNodeAddr : 0x8ee0824259012d80] [RealNodeAddr : 0x0000024259012d50]
+[188571] [Thread ID : 15416] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x8ee0824259012d80] [LocalNewNodeAddr : 0x8ee10242590128a0] [RealNodeAddr : 0x0000024259012d80]
+[188572] [Thread ID : 15416] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x8ee0824259012d80] [LocalNewNodeAddr : 0x8ee10242590128a0] [RealNodeAddr : 0x0000024259012d80]
+
+[188573] [Thread ID : 15416] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x8ede8242590128a0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x00000242590128a0]
+[188574] [Thread ID : 15416] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x0000024259012d80] [LocalNewNodeAddr : 0x0000024259012d80] [RealNodeAddr : 0x8ede8242590128a0]
+[188575] [Thread ID : 15416] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x8ee1824259012d80] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x8ede8242590128a0]
+
+[188576] [Thread ID : 05528] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x00000242590127e0] [LocalNewNodeAddr : 0x00000242590127e0] [RealNodeAddr : 0x8ede024259012d80]
+[188577] [Thread ID : 05528] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x8ee00242590127e0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x8ede024259012d80]
+
+
+
+
+[188578] [Thread ID : 15416] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x8ee1824259012d80] [LocalNewNodeAddr : 0x00000242590127e0] [RealNodeAddr : 0x0000024259012d80]
+[188579] [Thread ID : 15416] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x8ee1824259012d80] [LocalNewNodeAddr : 0x00000242590127e0] [RealNodeAddr : 0x0000024259012d80]
+[188580] [Thread ID : 15416] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x8ee1824259012d80] [LocalNewNodeAddr : 0x00000242590127e0] [RealNodeAddr : 0x0000024259012d80]
+[188581] [Thread ID : 15416] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x8ee1824259012d80] [LocalNewNodeAddr : 0x00000242590127e0] [RealNodeAddr : 0x0000024259012d80]
+[188582] [Thread ID : 15416] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x8ee1824259012d80] [LocalNewNodeAddr : 0x00000242590127e0] [RealNodeAddr : 0x0000024259012d80]
+[188583] [Thread ID : 05528] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x8ee1824259012d80] [LocalNewNodeAddr : 0x00000242590127e0] [RealNodeAddr : 0x0000024259012d80]
+[188584] [Thread ID : 05528] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x8ee1824259012d80] [LocalNewNodeAddr : 0x00000242590127e0] [RealNodeAddr : 0x0000024259012d80]
+
+- 어떤 특이점이 있는지 보자. 지금 일단 무한 루프 돌고 있는데 m_Tail이 0x8ee1824259012d80이고 그것의 next가 0x00000242590127e0이고 이것의 또 next는 nullptr임.
+  즉, 노드가 2개가 있는데
+  [노드 1 : 0x8ee1824259012d80] -> [노드 2: 0x00000242590127e0] ->nullptr
+  [m_Tail]
+- 위와 같은 상태라서 1stCAS를 통과를 못함.
+
+
+- 루프를 돌면서 localTail을 갱신하도록 했는데 이래도 무한루프가 발생함
+  tail : 0x000081c2abca0840 이고 next가 0x000001c2abca0d50라서 못나가버림. 
+- 이런 상황이 왜 발생했는지 다시 시나리오를 생각해보면 먼저 1stCAS한 스레드가 들어와서 nullptr을 자기가 붙인 노드로 체크해서 루프 탈출한 순간 나중에 1stCAS한 스레드가 들어와서
+  큐 뒤에 노드를 붙이고 먼저 1stCAS한 스레드는 2ndCAS성공해서 m_Tail을 0x000081c2abca0840로 바꿔버리고 나중에 1stCAS한 스레드가 local가지고 next를 보니 nullptr아니라서 
+  local을 다시 m_pTail로 바꾸는데 이것의 next를 봐도 어차피 nullptr이 아님. 그래서 next를 백날 봐야 nullptr이 아니라서 탈출해버림.
+
+- 그래서 다시 본래로 돌아가서 본인의 localTail 저장한것 부터 각자가 next를 계속 참조해 가면서 next가 nullptr인 노드를 찾고 찾았으면 local을 갱신해서 2ndCAS를 하는 것임.
+  만약에 먼저 1stCAS한 스레드가 if문을 자기가 붙인 노드로 체크해서 탈출하고 tail갱신하고 2ndCAS직전에 뒤늦게 cas한 스레드가 와서 이 스레드도 본인이 붙인 노드를 찾아서
+  nullptr 체크해서 루프 탈출해서 tail 갱신하면 이제는 먼저 1stCAS한 스레드랑 나중에 1stCAS한 스레드랑 2ndCAS에서 진짜 경쟁 발생할 것임. 이때 나중에 1stCAS한 스레드가
+  실패하면 tail이 못바뀌는 것임. 그래서 이것도 안됨.
+  
+
+//각자가 먼저 진짜 큐 마지막 노드 찾기
+localTempTail = localTail;
+newNode = (Node*)((uint64_t)localTail & BITMASK);
+while (1)
+{
+	localTailNext = newNode->_next;
+	if (localTailNext == nullptr)
+		break;
+
+	//맨끝 노드가 아니면 newNode변경
+	newNode = localTailNext;
+
+	loopCnt2++;
+	if (loopCnt2 < 500)
+	{
+		index = InterlockedIncrement64((__int64*)&m_LogIndex);
+		Capture(index, 0, 1, curID, (Node*)newNode, localTailNext, localTail);
+	}
+
+}
+
+localTail = m_pTail;
+
+newNode = (Node*)((UINT64)newNode | (retCnt << 47)); 
+
+InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
+
+
+
+
+
+
+
+- 다시 돌아와서 그러면 나중에 1stCAS해서 큐 뒤에 노드 붙인 스레드가 본인이 붙인 newNode를 제대로 볼 수 있게 해야 함. 그러면 지금 next가 nullptr인지 체크하는데 먼저
+  본인이 tail->next에 붙인 newNode의 next가 nullptr인지 체크하는 것을 먼저 해볼까?
+  그래서 먼저 1stCAS한 스레드는 자기가 붙인 노드 뒤가 nullptr이라서 탈출 가능하고 뒤늦게 newNode를 붙인 스레드도 탈출할 수 있음.
+
+- 다시 처음으로 돌아와서 생각하자. 그 당시의 문제가 뒤늦게 들어온 스레드가 newNode는 잘 찾았는데 local이 tail과 달라서 tail을 못바꾸는 불상사가 발생해버림.
+  그러면 실패할때 local을 ret값으로 갱신해서 루프를 다시 도는 방법은 어떨까?
+  즉, 각자가 최초로 바라본 local에서 next가 nullptr인 노드를 찾아서 그 노드를 newNode로 설정해서 2ndCAS를 하고 만약에 실패하면 리턴값을 다시 local로 설정해서
+  다시 next가 nullptr인 노드를 찾는 것임.
+- 이렇게 하니 무한 루프는 안도는데 head->next == nullptr이 발생함. 그래서 이것부터 다시 해결하고 오자.
+

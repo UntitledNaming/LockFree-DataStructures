@@ -1,0 +1,151 @@
+1. 문제점 다시 분석
+- Dequeue에서도 사전 작업해야 하는 이유를 Enqueue할때 tail의 next가 자기 자신으로 나와서 그런것으로 생각했는데 지금 애초에 중단점을 사전작업할 때 걸어놔서 그런 일이 발생할 수 있음.
+- 1st CAS 작업에 대해서 봐야 함.
+
+
+[3089003] [Thread ID : 22088] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x987f81962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x987f800000000000] 
+[3089004] [Thread ID : 22088] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x987f81962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 상태 보면
+22088 스레드는 tail : 0x987f81962810e3b0로 보고 있는 채로 1stCAS를 하려고 함.
+
+
+[3089005] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x987f81962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x987f800000000000] 
+[3089006] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x987f81962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089007] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x987f81962810e3b0] [LocalNewNodeAddr : 0x988081962810d870] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089008] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x987f81962810e3b0] [LocalNewNodeAddr : 0x988081962810d870] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x987f81962810e3b0] 
+[3089009] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x987f01962810e410] [LocalNewNodeAddr : 0x988101962810d8a0] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089010] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x987f01962810e410] [LocalNewNodeAddr : 0x988101962810d8a0] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089011] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988101962810d8a0] [LocalNewNodeAddr : 0x988181962810e3b0] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089012] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988101962810d8a0] [LocalNewNodeAddr : 0x988181962810e3b0] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089013] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988081962810d870] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x9880800000000000] 
+[3089014] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988081962810d870] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089015] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988081962810d870] [LocalNewNodeAddr : 0x988201962810d8a0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089016] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988081962810d870] [LocalNewNodeAddr : 0x988201962810d8a0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x988081962810d870] 
+[3089017] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988201962810d8a0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x9882000000000000] 
+[3089018] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988201962810d8a0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089019] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988201962810d8a0] [LocalNewNodeAddr : 0x988281962810e410] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089020] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988201962810d8a0] [LocalNewNodeAddr : 0x988281962810e410] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x988201962810d8a0] 
+[3089021] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988181962810e3b0] [LocalNewNodeAddr : 0x988301962810d870] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089022] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988181962810e3b0] [LocalNewNodeAddr : 0x988301962810d870] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089023] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988301962810d870] [LocalNewNodeAddr : 0x988381962810d8a0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089024] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988301962810d870] [LocalNewNodeAddr : 0x988381962810d8a0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089025] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988281962810e410] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x9882800000000000] 
+[3089026] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988281962810e410] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089027] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988281962810e410] [LocalNewNodeAddr : 0x988401962810d870] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089028] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988281962810e410] [LocalNewNodeAddr : 0x988401962810d870] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x988281962810e410] 
+[3089029] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988401962810d870] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x9884000000000000] 
+[3089030] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988401962810d870] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089031] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988401962810d870] [LocalNewNodeAddr : 0x988481962810e3b0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089032] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988401962810d870] [LocalNewNodeAddr : 0x988481962810e3b0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x988401962810d870] 
+[3089033] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988381962810d8a0] [LocalNewNodeAddr : 0x988501962810e410] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089034] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988381962810d8a0] [LocalNewNodeAddr : 0x988501962810e410] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089035] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988501962810e410] [LocalNewNodeAddr : 0x988581962810d870] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089036] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988501962810e410] [LocalNewNodeAddr : 0x988581962810d870] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089037] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988481962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x9884800000000000] 
+[3089038] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988481962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089039] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988481962810e3b0] [LocalNewNodeAddr : 0x988601962810e410] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089040] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988481962810e3b0] [LocalNewNodeAddr : 0x988601962810e410] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x988481962810e3b0] 
+[3089041] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988601962810e410] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x9886000000000000] 
+[3089042] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988601962810e410] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089043] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988601962810e410] [LocalNewNodeAddr : 0x988681962810d8a0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089044] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988601962810e410] [LocalNewNodeAddr : 0x988681962810d8a0] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x988601962810e410] 
+[3089045] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988581962810d870] [LocalNewNodeAddr : 0x988701962810e3b0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089046] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988581962810d870] [LocalNewNodeAddr : 0x988701962810e3b0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089047] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988701962810e3b0] [LocalNewNodeAddr : 0x988781962810e410] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089048] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988701962810e3b0] [LocalNewNodeAddr : 0x988781962810e410] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089049] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988681962810d8a0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x9886800000000000] 
+[3089050] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988681962810d8a0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089051] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988681962810d8a0] [LocalNewNodeAddr : 0x988801962810e3b0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089052] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988681962810d8a0] [LocalNewNodeAddr : 0x988801962810e3b0] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x988681962810d8a0] 
+[3089053] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988801962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x9888000000000000] 
+[3089054] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988801962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089055] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988801962810e3b0] [LocalNewNodeAddr : 0x988881962810d870] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089056] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988801962810e3b0] [LocalNewNodeAddr : 0x988881962810d870] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x988801962810e3b0] 
+[3089057] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988781962810e410] [LocalNewNodeAddr : 0x988901962810d8a0] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089058] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988781962810e410] [LocalNewNodeAddr : 0x988901962810d8a0] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089059] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988901962810d8a0] [LocalNewNodeAddr : 0x988981962810e3b0] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089060] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988901962810d8a0] [LocalNewNodeAddr : 0x988981962810e3b0] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089061] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988881962810d870] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x9888800000000000] 
+[3089062] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988881962810d870] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089063] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988881962810d870] [LocalNewNodeAddr : 0x988a01962810d8a0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089064] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988881962810d870] [LocalNewNodeAddr : 0x988a01962810d8a0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x988881962810d870] 
+[3089065] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988a01962810d8a0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x988a000000000000] 
+[3089066] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988a01962810d8a0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089067] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988a01962810d8a0] [LocalNewNodeAddr : 0x988a81962810e410] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089068] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988a01962810d8a0] [LocalNewNodeAddr : 0x988a81962810e410] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x988a01962810d8a0] 
+[3089069] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988981962810e3b0] [LocalNewNodeAddr : 0x988b01962810d870] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089070] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988981962810e3b0] [LocalNewNodeAddr : 0x988b01962810d870] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089071] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988b01962810d870] [LocalNewNodeAddr : 0x988b81962810d8a0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089072] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988b01962810d870] [LocalNewNodeAddr : 0x988b81962810d8a0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089073] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988a81962810e410] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x988a800000000000] 
+[3089074] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988a81962810e410] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089075] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988a81962810e410] [LocalNewNodeAddr : 0x988c01962810d870] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+[3089076] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988a81962810e410] [LocalNewNodeAddr : 0x988c01962810d870] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x988a81962810e410] 
+
+
+
+[3089077] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988c01962810d870] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x988c000000000000] 
+[3089078] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988c01962810d870] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089079] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988c01962810d870] [LocalNewNodeAddr : 0x988c81962810e3b0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000]
+
+- 여기까지 17900 스레드가 지 혼자 Enqueue, Dequeue 하다가 
+[tail : 0x988c01962810d870] - > [newNode : 0x988c81962810e3b0]로 17900 스레드가 성공하고 이 newNode를 tail로 봤던 22088 스레드가 어쨌든 내가 바라봤던 tail의 next는 nullptr이니 22088 스레드는 통과함.
+
+
+[3089080] [Thread ID : 22088] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x987f81962810e3b0] [LocalNewNodeAddr : 0x988001962810db10] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 하면 
+[tail : 0x988c01962810d870] - > [newNode : 0x988c81962810e3b0] - >[ 0x988001962810db10] 하고
+
+
+[3089081] [Thread ID : 17900] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x988c01962810d870] [LocalNewNodeAddr : 0x988c81962810e3b0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x988c01962810d870] 
+[3089082] [Thread ID : 22088] [Enqueue] [LogicTime : 5] [LocalNodeAddr : 0x987f81962810e3b0] [LocalNewNodeAddr : 0x988001962810db10] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x988c81962810e3b0] 
+[3089083] [Thread ID : 22088] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x987f81962810e3b0] [LocalNewNodeAddr : 0x988001962810db10] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x988c81962810e3b0] 
+
+- 여기까지 하면 17900 스레드만 2ndCAS를 성공하고 22088 스레드는 실패하니 tail이 안바뀔 것임.
+[ 0x988c01962810d870] - > [tail : 0x988c81962810e3b0] - >[ 0x988001962810db10]
+
+[3089084] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988b81962810d8a0] [LocalNewNodeAddr : 0x988d01962810e410] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+[3089085] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988b81962810d8a0] [LocalNewNodeAddr : 0x988d01962810e410] [RealNodeAddr : 0x000001962810d8a0] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 하면 
+[head :  0x988b81962810d8a0] -> [0x988d01962810e410] ->...->[ 0x988c01962810d870] - > [tail : 0x988c81962810e3b0] - >[ 0x988001962810db10]
+[head : 0x988d01962810e410] ->...->[ 0x988c01962810d870] - > [tail : 0x988c81962810e3b0] - >[ 0x988001962810db10]
+
+[3089086] [Thread ID : 22088] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988d01962810e410] [LocalNewNodeAddr : 0x988d81962810d870] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+[3089087] [Thread ID : 22088] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988d01962810e410] [LocalNewNodeAddr : 0x988d81962810d870] [RealNodeAddr : 0x000001962810e410] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 하면 
+[ head : 0x988c01962810d870] - > [tail : 0x988c81962810e3b0] - >[ 0x988001962810db10]
+
+
+
+[3089088] [Thread ID : 17900] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988d81962810d870] [LocalNewNodeAddr : 0x988e01962810e3b0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+[3089089] [Thread ID : 17900] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988d81962810d870] [LocalNewNodeAddr : 0x988e01962810e3b0] [RealNodeAddr : 0x000001962810d870] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 하면 
+[head / tail : 0x988c81962810e3b0] - >[ 0x988001962810db10]
+
+[3089090] [Thread ID : 22088] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x988e01962810e3b0] [LocalNewNodeAddr : 0x988e81962810db10] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+[3089091] [Thread ID : 22088] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x988e01962810e3b0] [LocalNewNodeAddr : 0x988e81962810db10] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+
+- 여기까지 하면
+[ head : 0x988001962810db10] ->nullptr
+
+[tail : 0x988c81962810e3b0](반납됨)
+
+- 
+
+
+[3089092] [Thread ID : 17900] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988c81962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x988c800000000000] 
+[3089093] [Thread ID : 17900] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x988c81962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x0000000000000000] 
+
+-여기까지의 문제가 Dequeue에서 반납된 노드의 주소가 tail에 있는데 지금 그 노드의 next가 원래  0x988001962810db10 노드 주소를 가리켜야 하는데 지금 nullptr을 가리키고 있고 그래서
+17900 스레드가 tail을 바라보고 next를 할 때 nullptr이니 1stCAS를 해버림. 근데 17900 스레드가 그래서 tail 뒤에 붙인 스레드 주소가 Dequeue할때 뽑은 주소임.
+
+
+
+[3089094] [Thread ID : 22088] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x988c81962810e3b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x000001962810e3b0] [RetCAS : 0x988c800000000000] 
+[3089095] [Thread ID : 17900] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x988c81962810e3b0] [LocalNewNodeAddr : 0x988f01962810e3b0] [RealNodeAddr : 0x0000000000000000] [RetCAS : 0x0000000000000000]
+

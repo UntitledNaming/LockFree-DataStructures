@@ -1,0 +1,25 @@
+1. 문제 상황 로그 분석
+- 에러가 발생한 스레드에서 아래 로그를 남김.
+   이걸 보면  0x5b2e82c25a0a0350 주소가 2nd CAS를 했을 때 기존 m_pTail에 저장된 값인데 1st CAS 전 로컬에 저장한 0x5b1c82c25a0a0350값이랑 다름.
+   즉, 2nd CAS를 시도하려는데 1st CAS전에 저장한 tail노드 주소값이 2nd CAS를 하려고 보니 바뀌었다는 것임. 즉 누가 바꾼 것임.
+[120394] [Thread ID : 26316] [Enqueue] [LogicTime : 3] [LocalTopAddr : 0x5b2e82c25a0a0350] [LocalNewTopAddr : 0x5b1c82c25a0a0350]
+
+- 위 로그를 남긴 스레드가 어떤 행동을 하고 있는지 추적해보면 직전에 찍힌 로그가 아래것인데 1st CAS를 통과한 로그임. 
+   realTail->next를 0x5b1d02c25a0a06e0로 바꾼 것임. 이때 지역에 저장했던 tailNode 주소값도 0x5b1c82c25a0a0350임.
+  
+[120393] [Thread ID : 26316] [Enqueue] [LogicTime : 1] [LocalTopAddr : 0x5b1c82c25a0a0350] [LocalNewTopAddr : 0x5b1d02c25a0a06e0]
+
+- 여기서 부터 ID : 24260 스레드가 계속 로그를 남겼는데 바로 직전에 남긴 로그가 이것임. 즉, Enqueue에서 2nd CAS를 성공한 것임. 이때 
+   tailnode : 0x5b2e02c25a0a0500 를 0x5b2e82c25a0a0350로 바꾼 것임. 바뀐 tailNode에 저장된 주소값을 보면 에러 로그 남길 때 2nd CAS에서 리턴된 tailNode 값임.
+[120392] [Thread ID : 24260] [Enqueue] [LogicTime : 2] [LocalTopAddr : 0x5b2e02c25a0a0500] [LocalNewTopAddr : 0x5b2e82c25a0a0350]
+
+- 26316 스레드가 1st CAS 직전에 찍은 로그를 보면 아래 로그임. 즉, tail->next를 nullptr로 봤음. 이 아래로 그러면 24260 스레드가 뭘 했는지 사이에 로그를 추적했음.
+[120305] [Thread ID : 26316] [Enqueue] [LogicTime : 0] [LocalTopAddr : 0x5b1c82c25a0a0350] [LocalNewTopAddr : 0x0000000000000000]
+
+- 24260 스레드가 Dequeue를 하다가 Enqueue를 하는데 26316 스레드가 로컬에 저장한 tailNode를 24260 스레드가 바꾸고 있음. Enqueue를 한 3번 정도 하고 나서 
+[120312] [Thread ID : 24260] [Enqueue] [LogicTime : 0] [LocalTopAddr : 0x5b1c82c25a0a0350] [LocalNewTopAddr : 0x0000000000000000]
+[120313] [Thread ID : 24260] [Enqueue] [LogicTime : 1] [LocalTopAddr : 0x5b1c82c25a0a0350] [LocalNewTopAddr : 0x5b1f02c25a0a0500]
+[120314] [Thread ID : 24260] [Enqueue] [LogicTime : 2] [LocalTopAddr : 0x5b1c82c25a0a0350] [LocalNewTopAddr : 0x5b1f02c25a0a0500]
+
+
+- 그런데 이 로그 만으로는 tag가 붙은 형태라 같은 노드인데 tag가 다른 것인지 체크가 잘 안됨. 그래서 tag 붙기 전 노드 주소값도 로깅하는 것으로 변경함.

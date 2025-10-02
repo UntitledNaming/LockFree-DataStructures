@@ -1,0 +1,48 @@
+1. 로그 파일 분석
+- 아래 로그가 문제 터진것 확인 했을 때 2nd CAS 리턴값과 1st CAS 전 저장한 tailNode에 저장된 주소값임.
+[Thread ID : 19180] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x5bbb8223796f0740] [LocalNewNodeAddr : 0x5b958223796f0740] [RealNodeAddr : 0x00000223796f0740]
+
+- 바로 위에는 아래 처럼 1st CAS 직전 Dequeue 하려는 로그 인데 딱히 별 상관은 없음.
+[Thread ID : 09428] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x5bbc8223796f03b0] [LocalNewNodeAddr : 0x5bbd0223796f0740] [RealNodeAddr : 0x00000223796f03b0]
+
+- 그 위에는 19180 스레드가 이 로그를 남겼고 중요한건 1st CAS전 로그를 찾아야 함.
+[Thread ID : 19180] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x5b958223796f0740] [LocalNewNodeAddr : 0x5b990223796f0200] [RealNodeAddr : 0x00000223796f0740]
+
+- 그 로그가 아래 로그임. 여기서부터 스레드들이 무슨 짓을 했는지 보면 원인을 찾을 수 있을 것임.
+[Thread ID : 19180] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x5b958223796f0740] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x00000223796f0740]
+
+- 지금 특이점이 발생하는 주소가 0x00000223796f0740랑 2nd CAS 실패 했을 때 리턴값인 0x5bbb8223796f0740임. 리턴값 부터 보면 9428 스레드가 Enqueue를 성공해서 tailNode를
+0x5bbb8223796f0740로 바꾸고 나서 19180 스레드가 1st CAS를 진행해서 성공하고 나서 2nd CAS를 하려보니 LogicTime = 3인 로그가 찍힌 것임.
+
+[Thread ID : 09428] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x5bbb0223796f03b0] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x00000223796f03b0]
+[Thread ID : 09428] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x5bbb0223796f03b0] [LocalNewNodeAddr : 0x5bbb8223796f0740] [RealNodeAddr : 0x00000223796f03b0]
+[Thread ID : 09428] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x5bbb0223796f03b0] [LocalNewNodeAddr : 0x5bbb8223796f0740] [RealNodeAddr : 0x00000223796f03b0]
+
+[Thread ID : 09428] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x5bba0223796f04a0] [LocalNewNodeAddr : 0x5bbc0223796f04d0] [RealNodeAddr : 0x00000223796f04a0]
+[Thread ID : 09428] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x5bba0223796f04a0] [LocalNewNodeAddr : 0x5bbc0223796f04d0] [RealNodeAddr : 0x00000223796f04a0]
+[Thread ID : 09428] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x5bbc0223796f04d0] [LocalNewNodeAddr : 0x5bbc8223796f03b0] [RealNodeAddr : 0x00000223796f04d0]
+[Thread ID : 09428] [Dequeue] [LogicTime : 1] [LocalNodeAddr : 0x5bbc0223796f04d0] [LocalNewNodeAddr : 0x5bbc8223796f03b0] [RealNodeAddr : 0x00000223796f04d0]
+
+[Thread ID : 19180] [Enqueue] [LogicTime : 1] [LocalNodeAddr : 0x5b958223796f0740] [LocalNewNodeAddr : 0x5b990223796f0200] [RealNodeAddr : 0x00000223796f0740]
+[Thread ID : 09428] [Dequeue] [LogicTime : 0] [LocalNodeAddr : 0x5bbc8223796f03b0] [LocalNewNodeAddr : 0x5bbd0223796f0740] [RealNodeAddr : 0x00000223796f03b0]
+[Thread ID : 19180] [Enqueue] [LogicTime : 3] [LocalNodeAddr : 0x5bbb8223796f0740] [LocalNewNodeAddr : 0x5b958223796f0740] [RealNodeAddr : 0x00000223796f0740]
+
+
+- 문제는 이것임. 9248 스레드가 Enqueue를 성공해서 새로운 tailNode를 0x5bbb8223796f0740로 바꾸고 그 next는 nullptr일 것임. 그런데 19180 스레드가 그걸 체크를 못하는 것임.
+[Thread ID : 19180] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x5b958223796f0740] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x00000223796f0740]
+
+- 조금더 자세히 설명 하면 아래 로그가 찍힌 이후 9428 스레드가 락프리 큐에 대해 계속 Enqueue, Dequeue를 하다가 마지막 쯤에 tailNode를 0x5bbb8223796f0740로 바꾸는 작업을 성공하는데
+  문제는 tailNode에 저장된 주소값은 당연히 19180 스레드가 로컬에 저장한 tailNode 주소값과 다른데 문제는 1st CAS를 next가 nullptr인지 체크만 하고 있기 때문에 지금 19180 스레드는
+  tailNode가 바뀐 것인지 모른다는 것임. 왜냐면 진짜 tailNode는 바뀌었고 그 next는 nullptr이기 때문임. 
+
+[Thread ID : 19180] [Enqueue] [LogicTime : 0] [LocalNodeAddr : 0x5b958223796f0740] [LocalNewNodeAddr : 0x0000000000000000] [RealNodeAddr : 0x00000223796f0740]
+
+[Thread ID : 09428] [Enqueue] [LogicTime : 2] [LocalNodeAddr : 0x5bbb0223796f03b0] [LocalNewNodeAddr : 0x5bbb8223796f0740] [RealNodeAddr : 0x00000223796f03b0]
+
+- 결론적으로 1번 스레드가 tailNode를 지역에 저장하고 1st CAS 하기 전에 다른 스레드가 Dequeue를 쭉 진행해서 그 tailNode를 빼버리고 다시 뺀 스레드가 Enqueue를 할 때 빼버린 tailNode를
+   재활용 해서 1st CAS를 진행하고 2nd CAS를 진행하고 나서 다시 1번 스레드가 1st CAS를 시도하려고 할 때 tailNode가 Deq되고 Enq해서 재사용된 노드인줄 모르고 1번 스레드가 tail->next를
+   구해보면 2번 스레드가 기존 큐에 그 재사용된 노드를 붙이니 nullptr로 보이고 1번 스레드도 1st CAS를 통과함.
+- 그런데 문제는 이때 다른 스레드가 m_tailNode 변수까지 2nd CAS로 바꿨는데 1번 스레드는 그것을 인지 못하고  본인이 1st CAS전에 저장한 tailNode 주소랑 2nd CAS할때 비교하는 실제
+  큐의 tailNode 변수랑 비교해보니 다르니까 2nd CAS가 실패함.
+
+- 그런데 이미 다른 스레드가 큐 뒤로 재활용된 노드도 잘 붙였고 1번 스레드가 2nd CAS 실패해도 tailNode를 재갱신 하던가 하면 괜찮지 않을까? 싶음.
