@@ -146,6 +146,7 @@ public:
 
 		retCnt = InterlockedIncrement(&m_HeadCnt);
 
+
 		while (1)
 		{
 			localHead = m_pHead;

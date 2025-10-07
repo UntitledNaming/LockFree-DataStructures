@@ -53,8 +53,6 @@ public:
 	{
 		Node* newNode = m_pMemoryPool->Alloc();
 		newNode->data = data;
-		newNode->pNextNode = nullptr;
-
 		newNode->pNextNode = m_pTopNode;
 		m_pTopNode = newNode;
 

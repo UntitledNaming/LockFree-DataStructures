@@ -1,0 +1,53 @@
+﻿  main.cpp
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\main.cpp(25,62): warning C4312: '형식 캐스트': 'int'에서 더 큰 'void *'(으)로의 변환입니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\main.cpp(63,17): warning C4311: '형식 캐스트': 'LPVOID'에서 'INT'(으)로 포인터가 잘립니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\main.cpp(63,17): warning C4302: '형식 캐스트': 'LPVOID'에서 'INT'(으)로 잘립니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(68,18): warning C4477: 'fwprintf' : 서식 문자열 '%08x'에 'unsigned int' 형식의 인수가 필요하지만 variadic 인수 4의 형식이 'LFStack<int>::Node *'입니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+      C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(68,18):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\main.cpp(11,14):
+          컴파일되는 클래스 템플릿 인스턴스화 'LFStack<int>'에 대한 참조를 확인하세요.
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(45,7):
+          클래스 템플릿 멤버 함수 'void LFStack<int>::FileLog(void)'을(를) 컴파일하는 중입니다.
+              C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(159,11):
+              'LFStack<int>::Pop'에서 'LFStack<int>::FileLog'에 대한 첫 번째 참조를 확인하세요.
+              C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\main.cpp(68,4):
+              'WorkerThread'에서 'LFStack<int>::Pop'에 대한 첫 번째 참조를 확인하세요.
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(68,18): warning C4313: 'fwprintf': 서식 문자열의 '%x'이(가) LFStack<int>::Node *' 형식의 인수 4과(와) 충돌합니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(68,18): warning C4477: 'fwprintf' : 서식 문자열 '%08x'에 'unsigned int' 형식의 인수가 필요하지만 variadic 인수 5의 형식이 'LFStack<int>::Node *'입니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(68,18): warning C4313: 'fwprintf': 서식 문자열의 '%x'이(가) LFStack<int>::Node *' 형식의 인수 5과(와) 충돌합니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(73,18): warning C4477: 'fwprintf' : 서식 문자열 '%08x'에 'unsigned int' 형식의 인수가 필요하지만 variadic 인수 4의 형식이 'LFStack<int>::Node *'입니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(73,18): warning C4313: 'fwprintf': 서식 문자열의 '%x'이(가) LFStack<int>::Node *' 형식의 인수 4과(와) 충돌합니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(73,18): warning C4477: 'fwprintf' : 서식 문자열 '%08x'에 'unsigned int' 형식의 인수가 필요하지만 variadic 인수 5의 형식이 'LFStack<int>::Node *'입니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(73,18): warning C4313: 'fwprintf': 서식 문자열의 '%x'이(가) LFStack<int>::Node *' 형식의 인수 5과(와) 충돌합니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(50,9): warning C4101: 'suspendCount' :참조되지 않은 지역 변수입니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(49,11): warning C4101: 'hThread' :참조되지 않은 지역 변수입니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\LFStack_ver1.h(62,9): warning C4101: 'Buffer' :참조되지 않은 지역 변수입니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+  
+  코드를 생성하고 있습니다.
+  1 of 131 functions ( 0.8%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    1 functions had inline decision re-evaluated but remain unchanged
+  코드를 생성했습니다.
+  LFProblemTest_ABA.vcxproj -> C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\ABA\reproduce\x64\Release\LFProblemTest_ABA.exe

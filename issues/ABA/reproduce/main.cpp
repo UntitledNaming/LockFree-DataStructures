@@ -63,7 +63,7 @@ unsigned int __stdcall WorkerThread(LPVOID lpParam)
 			g_Stack.Push((INT)lpParam + i);
 		}
 
-		for (int j = 0; j < 2; j++)
+		for (int j = 0; j < 10; j++)
 		{
 			if (!g_Stack.Pop(data))
 			{

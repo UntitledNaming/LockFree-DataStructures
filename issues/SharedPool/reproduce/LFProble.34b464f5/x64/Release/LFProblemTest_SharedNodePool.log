@@ -1,0 +1,27 @@
+﻿  main.cpp
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\SharedPool\reproduce\LockFreeMemoryPoolLive.h(74,9): warning C4101: 'tempTop' :참조되지 않은 지역 변수입니다.
+  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
+      C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\SharedPool\reproduce\LockFreeMemoryPoolLive.h(74,9):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\SharedPool\reproduce\main.cpp(8,14):
+          컴파일되는 클래스 템플릿 인스턴스화 'LFQueue<int>'에 대한 참조를 확인하세요.
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\SharedPool\reproduce\LFQSingleLive.h(121,7):
+          클래스 템플릿 멤버 함수 'bool LFQueue<int>::Dequeue(T &)'을(를) 컴파일하는 중입니다.
+          with
+          [
+              T=int
+          ]
+              C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\SharedPool\reproduce\main.cpp(69,19):
+              'WorkerThread2'에서 'LFQueue<int>::Dequeue'에 대한 첫 번째 참조를 확인하세요.
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\SharedPool\reproduce\LFQSingleLive.h(175,8):
+          컴파일되는 클래스 템플릿 인스턴스화 'CMemoryPool<LFQueue<int>::Node>'에 대한 참조를 확인하세요.
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\SharedPool\reproduce\LockFreeMemoryPoolLive.h(70,3):
+          클래스 템플릿 멤버 함수 'CMemoryPool<LFQueue<int>::Node>::~CMemoryPool(void)'을(를) 컴파일하는 중입니다.
+              C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\SharedPool\reproduce\LockFreeMemoryPoolLive.h(308,1):
+              'CMemoryPool<LFQueue<int>::Node>::~CMemoryPool'에서 'CMemoryPool<LFQueue<int>::Node>::~CMemoryPool'에 대한 첫 번째 참조를 확인하세요.
+  
+  코드를 생성하고 있습니다.
+  Previous IPDB not found, fall back to full compilation.
+  All 28 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  코드를 생성했습니다.
+  LFProblemTest_SharedNodePool.vcxproj -> C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\issues\SharedPool\reproduce\x64\Release\LFProblemTest_SharedNodePool.exe

@@ -33,18 +33,20 @@ public:
 		}
 	}
 
-	void Free(T* pData)
+	bool Free(T* pData)
 	{
 		EnterCriticalSection(&cs);
 
 		if (!pool.empty())
 		{
 			if (pData == pool.front())
-				__debugbreak();
+				return false;
 		}
 
 		pool.push(pData);
 		LeaveCriticalSection(&cs);
+
+		return true;
 	}
 
 

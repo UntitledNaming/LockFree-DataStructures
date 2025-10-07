@@ -1,0 +1,129 @@
+1. 위치 찾기 
+- delete에서 크래시가 발생하는데 이 스레드에서 로그 파일 저장을 할 수는 없음. 그래서 이 스레드에서 double free 발생했을 때 로그 index값을 보고 다른 스레드에서 코드 위치 옮겨서 파일을 저장함.
+- 로그 파일에서 double free 발생했을 때 index가 [3511728]임. 
+
+2. 로그 분석
+- 해당 index를 가서 거기서 부터 위로 로그를 분석해 나가면 됨.
+- 이게 ABA 문제가 발생하는 로그임.
+
+[3511616] [Thread ID : 15148] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x412322b0]
+
+- 현재 15148 스레드가 top을 21b0 newTop을 22b0로 관측함.
+
+[3511617] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x41232270]
+[3511618] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232270] [LocalNewTopAddr : 0x412321d0]
+[3511619] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232270] [LocalNewTopAddr : 0x412321d0]
+[3511620] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x412322f0]
+[3511621] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x412322f0]
+[3511622] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x41232190]
+[3511623] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x41232190]
+[3511624] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x412322d0]
+[3511625] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x412322d0]
+[3511626] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412322d0] [LocalNewTopAddr : 0x412321f0]
+[3511627] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412322d0] [LocalNewTopAddr : 0x412321f0]
+[3511628] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412321f0] [LocalNewTopAddr : 0x41232210]
+[3511629] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412321f0] [LocalNewTopAddr : 0x41232210]
+[3511630] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x41232290]
+[3511631] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x41232290]
+[3511632] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x41232290] [LocalNewTopAddr : 0x41232210]
+[3511633] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x41232290] [LocalNewTopAddr : 0x41232210]
+[3511634] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x412321f0]
+[3511635] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x412321f0]
+[3511636] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412321f0] [LocalNewTopAddr : 0x412322d0]
+[3511637] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412321f0] [LocalNewTopAddr : 0x412322d0]
+[3511638] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412322d0] [LocalNewTopAddr : 0x41232190]
+[3511639] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412322d0] [LocalNewTopAddr : 0x41232190]
+[3511640] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x412322f0]
+[3511641] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x412322f0]
+[3511642] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x412321d0]
+[3511643] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x412321d0]
+[3511644] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x41232270]
+[3511645] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x41232270]
+[3511646] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x41232270] [LocalNewTopAddr : 0x412321b0]
+[3511647] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x41232270] [LocalNewTopAddr : 0x412321b0]
+[3511648] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x412322b0]
+[3511649] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x412322b0]
+[3511650] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x4122caa0]
+[3511651] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x4122caa0]
+
+- 그 순간 다른 스레드인 31768 스레드가 Push를 쭉 하다가 Pop을 10번 해서 노드를 뺌.
+
+[3511652] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x4122caa0] [LocalNewTopAddr : 0x41232290]
+[3511653] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x4122caa0] [LocalNewTopAddr : 0x41232290]
+[3511654] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232290] [LocalNewTopAddr : 0x412321f0]
+[3511655] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232290] [LocalNewTopAddr : 0x412321f0]
+[3511656] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412321f0] [LocalNewTopAddr : 0x412321b0]
+[3511657] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412321f0] [LocalNewTopAddr : 0x412321b0]
+[3511658] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x41232190]
+[3511659] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x41232190]
+[3511660] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x41232270]
+[3511661] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x41232270]
+[3511662] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232270] [LocalNewTopAddr : 0x41232210]
+[3511663] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232270] [LocalNewTopAddr : 0x41232210]
+[3511664] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x412322f0]
+[3511665] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x412322f0]
+[3511666] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x412321d0]
+[3511667] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x412321d0]
+[3511668] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x412322b0]
+[3511669] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x412322b0]
+[3511670] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x412322d0]
+[3511671] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x412322d0]
+[3511672] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412322d0] [LocalNewTopAddr : 0x412322b0]
+[3511673] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412322d0] [LocalNewTopAddr : 0x412322b0]
+[3511674] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x412321d0]
+[3511675] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x412321d0]
+[3511676] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x412322f0]
+[3511677] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x412322f0]
+[3511678] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x41232210]
+[3511679] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x41232210]
+[3511680] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x41232270]
+[3511681] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x41232270]
+[3511682] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x41232270] [LocalNewTopAddr : 0x41232190]
+[3511683] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x41232270] [LocalNewTopAddr : 0x41232190]
+[3511684] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x412321b0]
+[3511685] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x412321b0]
+[3511686] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x412321f0]
+[3511687] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x412321f0]
+[3511688] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412321f0] [LocalNewTopAddr : 0x41232290]
+[3511689] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412321f0] [LocalNewTopAddr : 0x41232290]
+[3511690] [Thread ID : 31768] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x41232290] [LocalNewTopAddr : 0x4122caa0]
+[3511691] [Thread ID : 31768] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x41232290] [LocalNewTopAddr : 0x4122caa0]
+
+- 31768 스레드가 다시 자기 혼자 스택에 push 10번 pop을 10번 함.
+
+[3511692] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x4122caa0] [LocalNewTopAddr : 0x412322d0]
+[3511693] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x4122caa0] [LocalNewTopAddr : 0x412322d0]
+[3511694] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412322d0] [LocalNewTopAddr : 0x41232210]
+[3511695] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412322d0] [LocalNewTopAddr : 0x41232210]
+[3511696] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x412322f0]
+[3511697] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232210] [LocalNewTopAddr : 0x412322f0]
+[3511698] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x41232190]
+[3511699] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412322f0] [LocalNewTopAddr : 0x41232190]
+[3511700] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x41232290]
+[3511701] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232190] [LocalNewTopAddr : 0x41232290]
+[3511702] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x41232290] [LocalNewTopAddr : 0x412321b0]
+[3511703] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x41232290] [LocalNewTopAddr : 0x412321b0]
+
+- 다시 Push를 시작하는데 이때 top은 caa0임. 그래서 이 순서대로 바로 위 로그까지 push했을 때 스택 상태를 보면
+21b0->2290->2190->22f0->2210->caa0
+
+[3511704] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x412322b0]
+
+- 같은 스레드가 힙에서 newNode로 22b0를 뽑았음.
+
+[3511705] [Thread ID : 15148] [Pop]   [LogicTime : 1] [LocalTopAddr : 0x412321b0] [LocalNewTopAddr : 0x412322b0]
+
+- 그런데 이때 스택 상태가 top이 21b0로 nextTop이 2290임. 그런데 15148 스레드는 top을 21b0 newTop을 22b0으로 본 상태에서 그냥 cas를 성공해버림.
+  그래서 top이 22b0로 바뀌어 버림. 이 노드는 31768 스레드가 막 힙에서 뽑은 newNode인데 그게 top으로 바뀌어 버린 것임.
+
+
+
+[3511706] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x412322b0]
+[3511707] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x412322b0]
+[3511708] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x412321d0]
+[3511709] [Thread ID : 15148] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x412322b0]
+[3511710] [Thread ID : 31768] [Push] [LogicTime : 1] [LocalTopAddr : 0x412322b0] [LocalNewTopAddr : 0x412321d0]
+[3511711] [Thread ID : 31768] [Push] [LogicTime : 0] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x412321b0]
+[3511712] [Thread ID : 15148] [Pop]   [LogicTime : 0] [LocalTopAddr : 0x412321d0] [LocalNewTopAddr : 0x412322b0]
+
+- 그래서 그 이후의 추가 로그를 보면 31768 스레드가 while문 실패해서 다시 0번 로그를 찍음. 이때 보면 top이 22b0로 newTop이 22b0임. 같은 노드임. 스택이 깨졌음.
