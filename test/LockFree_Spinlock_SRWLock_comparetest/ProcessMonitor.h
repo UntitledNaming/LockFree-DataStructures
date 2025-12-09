@@ -1,12 +1,11 @@
 #pragma once
 
-#define MAX_PATH 256 
 typedef double DOUBLE;
 
 class ProcessMonitor : public CCpuUsage
 {
 public:
-	ProcessMonitor(int threadCnt = 0, const UINT* pthreadIDArray = nullptr);
+	ProcessMonitor(int threadCnt = 0, const DWORD* pthreadIDArray = nullptr);
 	~ProcessMonitor();
 
 	void   UpdateCounter();

@@ -1,37 +1,33 @@
-
 #include <windows.h>
-#include <iostream>
 #include <process.h>
 #include <stack>
 #include <queue>
 #include <string>
+#include <thread>
 #include <pdh.h>
+#include <time.h>
+#pragma warning (disable:4996)
+
+#pragma comment(lib, "winmm.lib")
+#pragma comment(lib,"Pdh.lib")
+
 #include "Test.h"
-#include "DumpClass.h"
-
-
-CCrashDump dump;
 
 int main()
 {
-    int cpuInfo[4];
-    __cpuid(cpuInfo, 0x80000007);
-    if (cpuInfo[3] & (1 << 8)) {
-        // Invariant TSC supported
-    }
-    else
-        __debugbreak();
-
     wprintf(L"Test Start...\n");
 
+    CTest* p = new CTest;
+
+
     // 사전 작업
-    TestInit();
+    p->TestInit();
 
     // 스레드 생성
-    ThreadCreate();
+    p->ThreadCreate();
 
     // 스레드 제거 및 정리
-    TestClear();
+    p->TestClear();
 
 
     wprintf(L"Test End...\n");

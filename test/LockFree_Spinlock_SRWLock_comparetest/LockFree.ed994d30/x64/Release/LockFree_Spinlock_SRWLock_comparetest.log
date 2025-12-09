@@ -1,0 +1,43 @@
+﻿  ProcessMonitor.cpp
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\ProcessMonitor.cpp(124,20): warning C4018: '<': signed 또는 unsigned가 일치하지 않습니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\ProcessMonitor.cpp(150,20): warning C4018: '<': signed 또는 unsigned가 일치하지 않습니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\ProcessMonitor.cpp(108,13): warning C4101: 'status' :참조되지 않은 지역 변수입니다.
+  Test.cpp
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(25,15): warning C4311: '형식 캐스트': 'void *'에서 'int'(으)로 포인터가 잘립니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(25,15): warning C4302: '형식 캐스트': 'void *'에서 'int'(으)로 잘립니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(73,21): warning C4476: 'wprintf' : 서식 지정자에 알 수 없는 형식 필드 문자 ']'이(가) 있습니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(74,21): warning C4476: 'wprintf' : 서식 지정자에 알 수 없는 형식 필드 문자 ']'이(가) 있습니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(89,62): warning C4312: '형식 캐스트': 'int'에서 더 큰 'void *'(으)로의 변환입니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(95,69): warning C4312: '형식 캐스트': 'INT'에서 더 큰 'void *'(으)로의 변환입니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(190,41): warning C4018: '>=': signed 또는 unsigned가 일치하지 않습니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(208,41): warning C4018: '>=': signed 또는 unsigned가 일치하지 않습니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(225,41): warning C4018: '>=': signed 또는 unsigned가 일치하지 않습니다.
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\LockFreeMemoryPoolLive.h(74,9): warning C4101: 'tempTop' :참조되지 않은 지역 변수입니다.
+  (소스 파일 'Test.cpp'을(를) 컴파일하는 중)
+      C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\LockFreeMemoryPoolLive.h(74,9):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(118,5):
+          컴파일되는 클래스 템플릿 인스턴스화 'Stack<int>'에 대한 참조를 확인하세요.
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Stack.h(62,7):
+          클래스 템플릿 멤버 함수 'bool Stack<int>::pop(T &)'을(를) 컴파일하는 중입니다.
+          with
+          [
+              T=int
+          ]
+              C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Test.cpp(197,29):
+              'CTest::StackTest'에서 'Stack<int>::pop'에 대한 첫 번째 참조를 확인하세요.
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\Stack.h(73,3):
+          컴파일되는 클래스 템플릿 인스턴스화 'CMemoryPool<Stack<int>::Node>'에 대한 참조를 확인하세요.
+          C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\LockFreeMemoryPoolLive.h(70,3):
+          클래스 템플릿 멤버 함수 'CMemoryPool<Stack<int>::Node>::~CMemoryPool(void)'을(를) 컴파일하는 중입니다.
+              C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\LockFreeMemoryPoolLive.h(311,1):
+              'CMemoryPool<Stack<int>::Node>::~CMemoryPool'에서 'CMemoryPool<Stack<int>::Node>::~CMemoryPool'에 대한 첫 번째 참조를 확인하세요.
+  
+  main.cpp
+C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\main.cpp(20,16): warning C4316: 'CTest': 힙에 할당된 개체가 64에 맞추어져 있지 않을 수도 있습니다
+  코드를 생성하고 있습니다.
+  10 of 294 functions ( 3.4%) were compiled, the rest were copied from previous compilation.
+    2 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  코드를 생성했습니다.
+  LockFree_Spinlock_SRWLock_comparetest.vcxproj -> C:\Users\sdj53\Documents\GitHub\LockFree-DataStructures\test\LockFree_Spinlock_SRWLock_comparetest\x64\Release\LockFree_Spinlock_SRWLock_comparetest.exe

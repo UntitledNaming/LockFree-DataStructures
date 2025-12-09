@@ -127,6 +127,7 @@
   <ItemGroup>
     <ClInclude Include="CPUUsage.h" />
     <ClInclude Include="DumpClass.h" />
+    <ClInclude Include="Interlocked.h" />
     <ClInclude Include="LFQSingleLive.h" />
     <ClInclude Include="LFStack.h" />
     <ClInclude Include="ProcessMonitor.h" />

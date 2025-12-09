@@ -3,13 +3,10 @@
 #define USER_MEMORY_MAX 0x00007FFFFFFFFFFF
 #define BIT_MASK        0x00007FFFFFFFFFFF
 
-#include "Test.h"
+#include "Interlocked.h"
 #include "LockFreeMemoryPoolLive.h"
 
 using namespace std;
-
-extern UINT64* g_failcount;
-extern INTERLOCKCNT* g_cntarray;
 
 template <typename T>
 class LFStack
@@ -55,7 +52,7 @@ public:
 		m_topCnt = 0;
 	}
 
-	void Push(T InputData, INT idx)
+	void Push(T InputData, INT idx, INTERLOCKCNT* m_cntarray)
 	{
 		//메모리 로그 준비
 		DWORD    curID = GetCurrentThreadId();
@@ -68,7 +65,7 @@ public:
 		newNode->data = InputData;
 
 		do {
-			g_cntarray[idx].s_totalCnt++;
+			m_cntarray[idx].s_totalCnt++;
 
 			//CAS 실패하면 newNode에 붙인 tag때기
 			newNode = (Node*)(((uint64_t)newNode << 17) >> 17);
@@ -81,11 +78,11 @@ public:
 
 			if (_InterlockedCompareExchange64((volatile __int64*)&m_pTopNode, (__int64)newNode, (__int64)t) == (__int64)t)
 			{
-				g_cntarray[idx].s_succesCnt++;
+				m_cntarray[idx].s_succesCnt++;
 				break;
 			}
 			else
-				g_cntarray[idx].s_failCnt++;
+				m_cntarray[idx].s_failCnt++;
 
 		} while (1);
 
@@ -93,7 +90,7 @@ public:
 	}
 
 	//Data는 OutParameter임.
-	bool Pop(T& Data, INT idx)
+	bool Pop(T& Data, INT idx, INTERLOCKCNT* m_cntarray)
 	{
 		//메모리 로그 준비
 		DWORD curID = GetCurrentThreadId();
@@ -106,7 +103,7 @@ public:
 
 
 		do {
-			g_cntarray[idx].s_totalCnt++;
+			m_cntarray[idx].s_totalCnt++;
 
 			t = m_pTopNode; //기존 탑 노드 저장
 
@@ -122,11 +119,11 @@ public:
 
 			if (_InterlockedCompareExchange64((volatile __int64*)&m_pTopNode, (__int64)newTopNode, (__int64)t) == (__int64)t)
 			{
-				g_cntarray[idx].s_succesCnt++;
+				m_cntarray[idx].s_succesCnt++;
 				break;
 			}
 			else
-				g_cntarray[idx].s_failCnt++;
+				m_cntarray[idx].s_failCnt++;
 
 		} while (1);
 

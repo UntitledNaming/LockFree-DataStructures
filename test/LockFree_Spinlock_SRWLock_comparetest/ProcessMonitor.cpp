@@ -4,12 +4,13 @@
 #include <pdhmsg.h>
 #include <string>
 #include <vector>
+#include <thread>
 #include <tlhelp32.h>
 #pragma comment(lib,"Pdh.lib")
 #include "CPUUsage.h"
 #include "ProcessMonitor.h"
 
-ProcessMonitor::ProcessMonitor(int threadCnt, const UINT* pthreadIDArray)
+ProcessMonitor::ProcessMonitor(int threadCnt, const DWORD* pthreadIDArray)
 {
 	PDH_STATUS status;
 	WCHAR countPath[MAX_PATH];
@@ -90,7 +91,6 @@ ProcessMonitor::ProcessMonitor(int threadCnt, const UINT* pthreadIDArray)
 
 	}
 
-
 }
 
 ProcessMonitor::~ProcessMonitor()
@@ -159,7 +159,6 @@ void ProcessMonitor::UpdateCounter()
 	//CPU사용량 갱신
 	UpdateCpuTime();
 }
-
 
 // 프로세스 이름 추출
 bool ProcessMonitor::GetProcessName(std::wstring& outName)
