@@ -55,7 +55,6 @@ public:
 	void Push(T InputData)
 	{
 		//메모리 로그 준비
-		DWORD    curID = GetCurrentThreadId();
 		Node*    newNode = m_pMemoryPool->Alloc();
 		Node*    t;
 		Node*    real;
@@ -83,7 +82,6 @@ public:
 	bool Pop(T& Data)
 	{
 		//메모리 로그 준비
-		DWORD curID = GetCurrentThreadId();
 		DWORD retSize;
 
 		Node* t;
@@ -122,7 +120,7 @@ public:
 	}
 	bool IsEmpty()
 	{
-		if (m_pTopNode == nullptr)
+		if (m_size == 0)
 			return true;
 
 		return false;

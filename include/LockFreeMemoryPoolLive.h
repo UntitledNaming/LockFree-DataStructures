@@ -145,7 +145,6 @@ public:
 		}
 
 		m_iCapacity += Num;
-		wprintf(L"MemoryPool Capacity Up : %d \n", m_iCapacity);
 	}
 
 	//Alloc에서 아웃파라미터로 노드 포인터 줄 것임

@@ -140,7 +140,7 @@ tailNode를 newNode로 메모리풀에서 꺼내서 nullptr로 초기화 하는 
 - 그러면 1st CAS하고 언제 내 노드의 next를 nullptr로 바꿀까? 2ndCAS까지 하고 nulllptr로 바꾸면 결국 1stCAS, 2ndCAS를 할때까지 다른 스레드는 못하니 로직적으로 묶여버린 것임.
   그래서 1st CAS하고 next를 nullptr로 바꿔 보자.
 - 이렇게 하면 사전작업도 
-[tail : 0xaaa] -> [next : 0xffff ffff ffff fff]가 되는데 이때 사전작업에서 next가 nullptr이 아니기 때문에 tail을 0xffff ffff ffff ffff로 바꿔버림.
+[tail : 0xaaa] -> [next : 0xffff ffff ffff ffff]가 되는데 이때 사전작업에서 next가 nullptr이 아니기 때문에 tail을 0xffff ffff ffff ffff로 바꿔버림.
 - 탈출 조건을 0xffff ffff ffff ffff로 바꿔보자. 
 - 그리고 생성자에서 더미 노드의 next도 0xFFFF FFFF FFFF FFFF로 바꿔야 사전 작업 탈출 가능함.
 - 그런데 사전 작업은 탈출하는데 1st CAS가 nullptr로 작동하다 보니 모든 스레드가 1stCAS를 못함.
