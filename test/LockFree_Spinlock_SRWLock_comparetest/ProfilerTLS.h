@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include <windows.h>
 #include <unordered_map>
@@ -25,7 +25,7 @@ class CProfilerManager
 {
 private:
 
-	// ÇÁ·ÎÆÄÀÏ·¯ »ùÇÃ¸µ µ¥ÀÌÅÍ ±¸Á¶Ã¼
+	// í”„ë¡œíŒŒì¼ëŸ¬ ìƒ˜í”Œë§ ë°ì´í„° êµ¬ì¡°ì²´
 	struct st_PROFILE_DATA
 	{
 		uint16_t                 s_ErrorFlag;
@@ -55,7 +55,7 @@ private:
 		DOUBLE          s_TotalMaxTime;
 		DOUBLE          s_TotalMinTime;
 		uint64_t        s_TotalCallTime;
-		INT             s_Cnt; //´õÇØÁÙ¶§ ¸¶´Ù Áõ°¡½ÃÅ°±â
+		INT             s_Cnt; //ë”í•´ì¤„ë•Œ ë§ˆë‹¤ ì¦ê°€ì‹œí‚¤ê¸°
 	};
 
 
@@ -80,14 +80,14 @@ private:
 
 public:
 	/////////////////////////////////////////////////////////////////////////////
-	// ÇÁ·ÎÆÄÀÏ·¯¸¦ À§ÇÑ TlsIndex ÀúÀå ¹× µ¿±âÈ­ °´Ã¼ ÃÊ±âÈ­
+	// í”„ë¡œíŒŒì¼ëŸ¬ë¥¼ ìœ„í•œ TlsIndex ì €ì¥ ë° ë™ê¸°í™” ê°ì²´ ì´ˆê¸°í™”
 	// 
-	// Parameters: ¾øÀ½
-	// Return: TlsAlloc ¼º°ø(true), ½ÇÆĞ(false)
+	// Parameters: ì—†ìŒ
+	// Return: TlsAlloc ì„±ê³µ(true), ì‹¤íŒ¨(false)
 	/////////////////////////////////////////////////////////////////////////////
 	bool                         Init()
 	{
-		//TlsIndex ÀúÀå
+		//TlsIndex ì €ì¥
 		m_TlsIndex = TlsAlloc();
 		if (m_TlsIndex == TLS_OUT_OF_INDEXES)
 		{
@@ -95,7 +95,7 @@ public:
 			return false;
 		}
 
-		//µ¿±âÈ­ °´Ã¼ ÃÊ±âÈ­
+		//ë™ê¸°í™” ê°ì²´ ì´ˆê¸°í™”
 		InitializeSRWLock(&m_ArrayLock);
 
 		m_ArrayIndex = 0;
@@ -105,10 +105,10 @@ public:
 
 
 	/////////////////////////////////////////////////////////////////////////////
-	// ÀüÃ¼ »ùÇÃ¸µ µ¥ÀÌÅÍ ÀÚ·á±¸Á¶ÀÇ Index¸¦ ±¸ÇÏ°í TlsIndex¿¡ ÀúÀå
+	// ì „ì²´ ìƒ˜í”Œë§ ë°ì´í„° ìë£Œêµ¬ì¡°ì˜ Indexë¥¼ êµ¬í•˜ê³  TlsIndexì— ì €ì¥
 	// 
-	// Parameters: ¾øÀ½
-	// Return: ÀüÃ¼ »ùÇÃ¸µ µ¥ÀÌÅÍ ¹è¿­¿¡ ¼¼ÆÃ °¡´ÉÇÏ¸é ¼º°ø ¾ÈµÇ¸é ½ÇÆĞ
+	// Parameters: ì—†ìŒ
+	// Return: ì „ì²´ ìƒ˜í”Œë§ ë°ì´í„° ë°°ì—´ì— ì„¸íŒ… ê°€ëŠ¥í•˜ë©´ ì„±ê³µ ì•ˆë˜ë©´ ì‹¤íŒ¨
 	/////////////////////////////////////////////////////////////////////////////
 	bool                         ProfileInit()
 	{
@@ -139,10 +139,10 @@ public:
 
 
 	/////////////////////////////////////////////////////////////////////////////
-    // Profiling µÈ µ¥ÀÌÅ¸¸¦ Text ÆÄÀÏ·Î Ãâ·ÂÇÑ´Ù.
+    // Profiling ëœ ë°ì´íƒ€ë¥¼ Text íŒŒì¼ë¡œ ì¶œë ¥í•œë‹¤.
     //
-    // Parameters: (char *)Ãâ·ÂµÉ ÆÄÀÏ ÀÌ¸§.
-    // Return: ¾øÀ½.
+    // Parameters: (char *)ì¶œë ¥ë  íŒŒì¼ ì´ë¦„.
+    // Return: ì—†ìŒ.
     /////////////////////////////////////////////////////////////////////////////
 	void ProfileDataOutText(WCHAR* szName)
 	{
@@ -151,14 +151,14 @@ public:
 		SYSTEMTIME    stNowTime;
 
 
-		//ÇöÀç ³¯Â¥¿Í ½Ã°£ ¾ò±â
+		//í˜„ì¬ ë‚ ì§œì™€ ì‹œê°„ ì–»ê¸°
 		WCHAR filename[MAX_PATH];
 		GetLocalTime(&stNowTime);
 		wsprintf(filename, L"Profiling [%s]_%d%02d%02d_%02d.%02d.%02d.txt", szName, stNowTime.wYear, stNowTime.wMonth, stNowTime.wDay, stNowTime.wHour, stNowTime.wMinute, stNowTime.wSecond);
 
 		//=======================================================================================================
 		// 
-		//°¢ ½º·¹µå TLS¿¡ ÀúÀåµÈ »ùÇÃ¸µ ÀÚ·á±¸Á¶ ¼øÈ¸ÇÏ¸é¼­ Tagging µ¥ÀÌÅÍ Copy
+		//ê° ìŠ¤ë ˆë“œ TLSì— ì €ì¥ëœ ìƒ˜í”Œë§ ìë£Œêµ¬ì¡° ìˆœíšŒí•˜ë©´ì„œ Tagging ë°ì´í„° Copy
 		// 
 		//=======================================================================================================
 		st_PROFILE_DATA* ptr[MAX_THREAD_COUNT];
@@ -168,13 +168,13 @@ public:
 		{
 			size = m_SampleArray[i].s_TablePtr->size();
 
-			//ÇØ½Ã Å×ÀÌºí size ¸¸Å­ st_PROFILE_DATA ¹è¿­ »ı¼ºÇØ¼­ ±× Æ÷ÀÎÅÍ¸¦ ptr[i]¿¡ ÀúÀå
+			//í•´ì‹œ í…Œì´ë¸” size ë§Œí¼ st_PROFILE_DATA ë°°ì—´ ìƒì„±í•´ì„œ ê·¸ í¬ì¸í„°ë¥¼ ptr[i]ì— ì €ì¥
 			ptr[i] = new st_PROFILE_DATA[size];
 
 			std::unordered_map<std::wstring, st_PROFILE_DATA>::iterator it = m_SampleArray[i].s_TablePtr->begin();
 			j = 0;
 
-			//ÇÑ ½º·¹µåÀÇ ÇØ½Ã Å×ÀÌºíÀ» iterator·Î ¼øÈ¸ÇÏ¸é¼­ ÀúÀåµÈ value¸¦ ptr[i][j]¿¡ ÀÖ´Â st_PROFILE_DATA ¿ø¼Ò¿¡ Copy
+			//í•œ ìŠ¤ë ˆë“œì˜ í•´ì‹œ í…Œì´ë¸”ì„ iteratorë¡œ ìˆœíšŒí•˜ë©´ì„œ ì €ì¥ëœ valueë¥¼ ptr[i][j]ì— ìˆëŠ” st_PROFILE_DATA ì›ì†Œì— Copy
 			for (; it != m_SampleArray[i].s_TablePtr->end();)
 			{
 				ptr[i][j].s_CallTime = it->second.s_CallTime;
@@ -194,7 +194,7 @@ public:
 
 		//=======================================================================================================
 		// 
-		//°¢ ½º·¹µå º° »ùÇÃ¸µ µ¥ÀÌÅÍ °è»ê ¹× Ãâ·Â, ÃëÇÕ Ãâ·Â
+		//ê° ìŠ¤ë ˆë“œ ë³„ ìƒ˜í”Œë§ ë°ì´í„° ê³„ì‚° ë° ì¶œë ¥, ì·¨í•© ì¶œë ¥
 		// 
 		//=======================================================================================================
 
@@ -210,7 +210,7 @@ public:
 			pHeader[i] = L"-------------------------------------------------------------------------------------------------------\n";
 		}
 
-		//°¢ ½º·¹µå ÇØ½Ã Å×ÀÌºí size ÇÕ»ê
+		//ê° ìŠ¤ë ˆë“œ í•´ì‹œ í…Œì´ë¸” size í•©ì‚°
 		size_t totalsize = 0;
 		size_t maxsize = 0;
 		for (int i = 0; i < m_ArrayIndex; i++)
@@ -220,7 +220,7 @@ public:
 		}
 
 
-		//Total ÇÕ»êÀ» À§ÇÑ ¹è¿­ »ı¼º ¹× Tag ÃÊ±âÈ­ ÀÛ¾÷
+		//Total í•©ì‚°ì„ ìœ„í•œ ë°°ì—´ ìƒì„± ë° Tag ì´ˆê¸°í™” ì‘ì—…
 		st_TOTAL_DATA* pTotal = new st_TOTAL_DATA[totalsize];
 		for (int i = 0; i < totalsize; i++)
 		{
@@ -229,9 +229,9 @@ public:
 		}
 
 
-		// °è»êµÈ Á¤º¸¸¦ ÆÄÀÏ¿¡ ÀúÀåÇÒ ¹öÆÛ¿¡ Copy(Çì´õµµ ÀÌ¶§ ÀúÀå)
-		//ÇÁ·ÎÆÄÀÏ·¯ Çì´õ ¹× µ¥ÀÌÅÍ ÀúÀå
-		//MAX_STRING_SIZE : ÆÄÀÏ¿¡ ÀúÀåÇÒ Á¤º¸µé ¹®ÀÚ¿­ ÀúÀå½Ã 1ÁÙ ÃÖ´ë Å©±â
+		// ê³„ì‚°ëœ ì •ë³´ë¥¼ íŒŒì¼ì— ì €ì¥í•  ë²„í¼ì— Copy(í—¤ë”ë„ ì´ë•Œ ì €ì¥)
+		//í”„ë¡œíŒŒì¼ëŸ¬ í—¤ë” ë° ë°ì´í„° ì €ì¥
+		//MAX_STRING_SIZE : íŒŒì¼ì— ì €ì¥í•  ì •ë³´ë“¤ ë¬¸ìì—´ ì €ì¥ì‹œ 1ì¤„ ìµœëŒ€ í¬ê¸°
 		size_t reMain = (MAX_HEADER_SIZE + (MAX_STRING_SIZE) * (totalsize + maxsize + m_ArrayIndex))*sizeof(WCHAR);
 		WCHAR* pDataBuffer = (WCHAR*)malloc(reMain);
 		WCHAR* pEnd = nullptr;
@@ -239,9 +239,9 @@ public:
 
 		memset(pDataBuffer, NULL, reMain);
 
-		// 1. Çì´õ ÀúÀå
-		//3¹øÂ° ÀÎÀÚ : ¹®ÀÚ¿­ CopyÈÄ ¹®ÀÚ¿­ ³¡ NULL °¡¸®Å°´Â Æ÷ÀÎÅÍ
-		//4¹øÂ° ÀÎÀÚ : Dest ¹öÆÛ¿¡ ¹®ÀÚ¿­ CopyÈÄ ³²Àº Å©±â
+		// 1. í—¤ë” ì €ì¥
+		//3ë²ˆì§¸ ì¸ì : ë¬¸ìì—´ Copyí›„ ë¬¸ìì—´ ë NULL ê°€ë¦¬í‚¤ëŠ” í¬ì¸í„°
+		//4ë²ˆì§¸ ì¸ì : Dest ë²„í¼ì— ë¬¸ìì—´ Copyí›„ ë‚¨ì€ í¬ê¸°
 		ret = StringCchPrintfExW(pDataBuffer, reMain, &pEnd, &reMain, 0, pHeader[0]);
 		if (ret != S_OK)
 		{
@@ -260,7 +260,7 @@ public:
 
 
 
-		// 2. µ¥ÀÌÅÍ °è»ê ¹× ¹öÆÛ¿¡ ÀúÀå
+		// 2. ë°ì´í„° ê³„ì‚° ë° ë²„í¼ì— ì €ì¥
 		size_t tableSize = 0;
 		DOUBLE avgTime;
 		DOUBLE maxTime;
@@ -270,33 +270,33 @@ public:
 		LARGE_INTEGER freq;
 		QueryPerformanceFrequency(&freq);
 
-		//½º·¹µå º° »ùÇÃ¸µ µ¥ÀÌÅÍ ¹öÆÛ¿¡ Copy
+		//ìŠ¤ë ˆë“œ ë³„ ìƒ˜í”Œë§ ë°ì´í„° ë²„í¼ì— Copy
  		for (int i = 0; i < m_ArrayIndex; i++)
 		{
-			//ÇØ½Ã Å×ÀÌºí °ª ÀúÀåÇÑ ¹è¿­ ¼øÈ¸
+			//í•´ì‹œ í…Œì´ë¸” ê°’ ì €ì¥í•œ ë°°ì—´ ìˆœíšŒ
 			tableSize = m_SampleArray[i].s_TablePtr->size();
 			threadID = m_SampleArray[i].s_ThreadID;
 
 			for (int j = 0; j < tableSize;j++)
 			{
-				//ÀüÃ¼ TotalTick¿¡¼­ Max, Min »« °ªÀ» call È½¼ö·Î ³ª´®
+				//ì „ì²´ TotalTickì—ì„œ Max, Min ëº€ ê°’ì„ call íšŸìˆ˜ë¡œ ë‚˜ëˆ”
  				maxTime = (((ptr[i][j].s_Max[0] + ptr[i][j].s_Max[1]) / 2) * (double)1000000 / freq.QuadPart);
 				minTime = (((ptr[i][j].s_Min[0] + ptr[i][j].s_Min[1]) / 2) * (double)1000000 / freq.QuadPart);
 				avgTime = (((ptr[i][j].s_TotalTime - ptr[i][j].s_Max[0] - ptr[i][j].s_Max[1] - ptr[i][j].s_Min[0] - ptr[i][j].s_Min[1]) / (ptr[i][j].s_CallTime - 4)) * (double)1000000 / freq.QuadPart);
 
 
 
-				ret = StringCchPrintfExW(pEnd, reMain, &pEnd, &reMain, 0, L"Thread ID : %d |         %s |          %4lf §Á |          %4lf §Á |           %4lf §Á |      %ld | \n", threadID, ptr[i][j].s_Name, avgTime, minTime, maxTime, ptr[i][j].s_CallTime);
+				ret = StringCchPrintfExW(pEnd, reMain, &pEnd, &reMain, 0, L"Thread ID : %d |         %s |          %4lf ã² |          %4lf ã² |           %4lf ã² |      %ld | \n", threadID, ptr[i][j].s_Name, avgTime, minTime, maxTime, ptr[i][j].s_CallTime);
 				if (ret != S_OK)
 				{
 					__debugbreak();
 				}
 
-				//Total¹è¿­ ¼øÈ¸ ÇÏ¸é¼­ °°Àº TagÀÖÀ¸¸é ´õÇØÁÖ±â
+				//Totalë°°ì—´ ìˆœíšŒ í•˜ë©´ì„œ ê°™ì€ Tagìˆìœ¼ë©´ ë”í•´ì£¼ê¸°
 				int k;
 				for (k = 0; k < totalsize; k++)
 				{
-					//°°Àº Tag¸¦ °¡Áú¶§
+					//ê°™ì€ Tagë¥¼ ê°€ì§ˆë•Œ
 					if (pTotal[k].s_Name == ptr[i][j].s_Name)
 					{
 						pTotal[k].s_TotalCallTime += ptr[i][j].s_CallTime;
@@ -310,13 +310,13 @@ public:
 
 				}
 
-				//¸¸¾à ptr[i][j]¿¡ ÀúÀåµÈ st_PROFILE_DATAÀÇ Tag¸¦ °¡Áö°í Total¹è¿­ ¹İº¹¹° ´Ù µ¹¾Æµµ °°Àº Tag¸¦ ¸øÃ£¾ÒÀ¸¸é k´Â totalsize°ªÀÏ °ÍÀÓ.
+				//ë§Œì•½ ptr[i][j]ì— ì €ì¥ëœ st_PROFILE_DATAì˜ Tagë¥¼ ê°€ì§€ê³  Totalë°°ì—´ ë°˜ë³µë¬¼ ë‹¤ ëŒì•„ë„ ê°™ì€ Tagë¥¼ ëª»ì°¾ì•˜ìœ¼ë©´ këŠ” totalsizeê°’ì¼ ê²ƒì„.
 				if (k == totalsize)
 				{
-					//´Ù½Ã Total ¹è¿­ µ¹¸é¼­ »ç¿ë¾ÈÇÏ´Â °ø°£ Ã£±â
+					//ë‹¤ì‹œ Total ë°°ì—´ ëŒë©´ì„œ ì‚¬ìš©ì•ˆí•˜ëŠ” ê³µê°„ ì°¾ê¸°
 					for (int l = 0; l < totalsize; l++)
 					{
-						//»ç¿ë ¾ÈÇÏ´Â °ø°£ÀÌ¶ó¸é 
+						//ì‚¬ìš© ì•ˆí•˜ëŠ” ê³µê°„ì´ë¼ë©´ 
 						if (pTotal[l].s_UseFlag == 0)
 						{
 							pTotal[l].s_Name = ptr[i][j].s_Name;
@@ -334,7 +334,7 @@ public:
 
 			}
 
-			//ÇÑ ½º·¹µå »ùÇÃ µ¥ÀÌÅÍ CopyÇßÀ¸¸é ----- ¸¸µé±â
+			//í•œ ìŠ¤ë ˆë“œ ìƒ˜í”Œ ë°ì´í„° Copyí–ˆìœ¼ë©´ ----- ë§Œë“¤ê¸°
 			ret = StringCchPrintfExW(pEnd, reMain, &pEnd, &reMain, 0, L"-------------------------------------------------------------------------------------------------------\n");
 			if (ret != S_OK)
 			{
@@ -342,17 +342,17 @@ public:
 			}
 		}
 
-		//Total ¹è¿­¿¡ ÀÖ´Â °ª Ãâ·ÂÇÏ±â
+		//Total ë°°ì—´ì— ìˆëŠ” ê°’ ì¶œë ¥í•˜ê¸°
 		INT cnt;
  		for (int i = 0; i < totalsize; i++)
 		{
-			//»ç¿ë¾ÈÇÏ´Â ¹è¿­ÀÌ¸é Pass
+			//ì‚¬ìš©ì•ˆí•˜ëŠ” ë°°ì—´ì´ë©´ Pass
 			if (pTotal[i].s_UseFlag == 0)
 				continue;
 
 			cnt = pTotal[i].s_Cnt;
 
-			ret = StringCchPrintfExW(pEnd, reMain, &pEnd, &reMain, 0, L"         Total Data   |         %s |          %4lf §Á |          %4lf §Á |           %4lf §Á |      %ld | \n", pTotal[i].s_Name,pTotal[i].s_TotalAvgTime / cnt, pTotal[i].s_TotalMinTime / cnt, pTotal[i].s_TotalMaxTime / cnt, pTotal[i].s_TotalCallTime);
+			ret = StringCchPrintfExW(pEnd, reMain, &pEnd, &reMain, 0, L"         Total Data   |         %s |          %4lf ã² |          %4lf ã² |           %4lf ã² |      %ld | \n", pTotal[i].s_Name,pTotal[i].s_TotalAvgTime / cnt, pTotal[i].s_TotalMinTime / cnt, pTotal[i].s_TotalMaxTime / cnt, pTotal[i].s_TotalCallTime);
 			if (ret != S_OK)
 			{
 				__debugbreak();
@@ -361,21 +361,21 @@ public:
 
 
 
-		// 3. ÆÄÀÏ ½ºÆ®¸² »ı¼º
+		// 3. íŒŒì¼ ìŠ¤íŠ¸ë¦¼ ìƒì„±
 		err = _wfopen_s(&fp, filename, L"wb");
 		if (err != 0)
 		{
-			wprintf(L"ÆÄÀÏ ¿­±â ½ÇÆĞ. ¿¡·¯ ÄÚµå: %d \n", err);
+			wprintf(L"íŒŒì¼ ì—´ê¸° ì‹¤íŒ¨. ì—ëŸ¬ ì½”ë“œ: %d \n", err);
 			__debugbreak();
 			return;
 		}
 
 
-		//ÀúÀå
+		//ì €ì¥
 		fwrite(pDataBuffer, MAX_HEADER_SIZE + (MAX_STRING_SIZE) * (totalsize + maxsize + m_ArrayIndex), 1, fp);
 
 
-		// 4. ½ºÆ®¸² ´İ±â ¹× µŞ Á¤¸®
+		// 4. ìŠ¤íŠ¸ë¦¼ ë‹«ê¸° ë° ë’· ì •ë¦¬
 		fclose(fp);
 
 		for (int i = 0; i < m_ArrayIndex; i++)
@@ -404,7 +404,7 @@ public:
 class CProfiler 
 {
 private:
-	// ÇÁ·ÎÆÄÀÏ·¯ »ùÇÃ¸µ µ¥ÀÌÅÍ ±¸Á¶Ã¼
+	// í”„ë¡œíŒŒì¼ëŸ¬ ìƒ˜í”Œë§ ë°ì´í„° êµ¬ì¡°ì²´
 	struct st_PROFILE_DATA
 	{
 		uint16_t       s_ErrorFlag;
@@ -419,9 +419,9 @@ private:
 	typedef std::unordered_map<std::wstring, st_PROFILE_DATA>* PROFILE_MAP_PTR;
 
 private:
-	// ¸â¹ö º¯¼ö
-	PCWCHAR            m_Tag;               //»ı¼ºÀÚ¿¡¼­ Àü´ŞµÈ Tag ¹®ÀÚ¿­ Æ÷ÀÎÅÍ
-	st_PROFILE_DATA    m_SampleData;        //Begin, End¿¡¼­ »ç¿ëÇÒ »ùÇÃ¸µ µ¥ÀÌÅÍ ´ãÀ» º¯¼ö
+	// ë©¤ë²„ ë³€ìˆ˜
+	PCWCHAR            m_Tag;               //ìƒì„±ìì—ì„œ ì „ë‹¬ëœ Tag ë¬¸ìì—´ í¬ì¸í„°
+	st_PROFILE_DATA    m_SampleData;        //Begin, Endì—ì„œ ì‚¬ìš©í•  ìƒ˜í”Œë§ ë°ì´í„° ë‹´ì„ ë³€ìˆ˜
 	DWORD              m_threadid;
 
 public:
@@ -437,10 +437,10 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
-    // ÇÏ³ªÀÇ ÇÔ¼ö Profiling ½ÃÀÛ, ³¡ ÇÔ¼ö.
+    // í•˜ë‚˜ì˜ í•¨ìˆ˜ Profiling ì‹œì‘, ë í•¨ìˆ˜.
     //
-    // Parameters: (char *)ProfilingÀÌ¸§.
-    // Return: ¾øÀ½.                    
+    // Parameters: (char *)Profilingì´ë¦„.
+    // Return: ì—†ìŒ.                    
     /////////////////////////////////////////////////////////////////////////////
 	void ProfileBegin(WCHAR* szName)
 	{
@@ -450,14 +450,14 @@ public:
 		if (str.size() >= MAX_STRING_SIZE)
 			__debugbreak();
 
-		//½º·¹µå »ùÇÃ¸µ µ¥ÀÌÅÍ ÀÚ·á±¸Á¶¿¡ Á¢±Ù
+		//ìŠ¤ë ˆë“œ ìƒ˜í”Œë§ ë°ì´í„° ìë£Œêµ¬ì¡°ì— ì ‘ê·¼
 		PROFILE_MAP_PTR pTable;
 		pTable = (PROFILE_MAP_PTR)TlsGetValue(CProfilerManager::GetInstance()->GetTlsIndex());
 
 		std::unordered_map<std::wstring,st_PROFILE_DATA>::iterator it = pTable->find(str);
 
 
-		// wstring strÀ» key·Î ÇÒ¶§ ÇØ½Ã Å×ÀÌºí¿¡ ÇØ´ç key°¡ ¾ø´Â °æ¿ì ÃÊ±â°ª ¼¼ÆÃ ÈÄ Å×ÀÌºí¿¡ ÀúÀå
+		// wstring strì„ keyë¡œ í• ë•Œ í•´ì‹œ í…Œì´ë¸”ì— í•´ë‹¹ keyê°€ ì—†ëŠ” ê²½ìš° ì´ˆê¸°ê°’ ì„¸íŒ… í›„ í…Œì´ë¸”ì— ì €ì¥
 		if (it == pTable->end())
 		{
 			m_SampleData.s_CallTime = 0;
@@ -475,7 +475,7 @@ public:
 
 		else
 		{
-			//ÇØ½Ã Å×ÀÌºí¿¡ ÀÖÀ¸¸é ±× °ªÀ¸·Î SampleData ¼¼ÆÃ
+			//í•´ì‹œ í…Œì´ë¸”ì— ìˆìœ¼ë©´ ê·¸ ê°’ìœ¼ë¡œ SampleData ì„¸íŒ…
 			m_SampleData.s_CallTime = it->second.s_CallTime;
 			m_SampleData.s_ErrorFlag = it->second.s_ErrorFlag;
 			m_SampleData.s_TotalTime = it->second.s_TotalTime;
@@ -489,22 +489,22 @@ public:
 		}
 
 
-		//ErrorFlag°¡ 0ÀÌ°Å³ª End¿¡¼­ ¼³Á¤ÇÑ ÇÃ·¡±× °ªÀÎ 0x0010ÀÌ ¾Æ´Ï¸é Error¸¦ ¹ß»ı½ÃÅ´
+		//ErrorFlagê°€ 0ì´ê±°ë‚˜ Endì—ì„œ ì„¤ì •í•œ í”Œë˜ê·¸ ê°’ì¸ 0x0010ì´ ì•„ë‹ˆë©´ Errorë¥¼ ë°œìƒì‹œí‚´
 		if (m_SampleData.s_ErrorFlag != 0 && m_SampleData.s_ErrorFlag != 0x0010)
 			throw szName;
 
 
-		//Á¤»óÀûÀ¸·Î ¼¼ÆÃ µÇ¾úÀ¸¸é Begin Á¦´ë·Î ÇßÀ¸´Ï ErrorFlag ¼¼ÆÃ
+		//ì •ìƒì ìœ¼ë¡œ ì„¸íŒ… ë˜ì—ˆìœ¼ë©´ Begin ì œëŒ€ë¡œ í–ˆìœ¼ë‹ˆ ErrorFlag ì„¸íŒ…
 		m_SampleData.s_ErrorFlag = 0xFFFF;
 		 
 		m_threadid = GetCurrentThreadId();
-		//½Ã°£ ÃøÁ¤ ½ÃÀÛ
+		//ì‹œê°„ ì¸¡ì • ì‹œì‘
 		QueryPerformanceCounter(&m_SampleData.s_StartTick);
 	}
 
 	void ProfileEnd(WCHAR* szName)
 	{
-		//Á¾·á ½Ã°£ °»½Å
+		//ì¢…ë£Œ ì‹œê°„ ê°±ì‹ 
 		LARGE_INTEGER endTick;
 		LARGE_INTEGER freq;
 		uint64_t DiffTick;
@@ -516,15 +516,15 @@ public:
 		if (m_threadid != id)
 			__debugbreak();
 
-		//»ı¼ºÀÚ¿¡¼­ ¼³Á¤ÇÑ ¸â¹ö º¯¼ö ¿¡·¯ ÇÃ·¡±×¶û ´Ù¸£¸é ¿¡·¯
+		//ìƒì„±ìì—ì„œ ì„¤ì •í•œ ë©¤ë²„ ë³€ìˆ˜ ì—ëŸ¬ í”Œë˜ê·¸ë‘ ë‹¤ë¥´ë©´ ì—ëŸ¬
 		if (m_SampleData.s_ErrorFlag != 0xFFFF)
 			throw szName;
 
-		//Total¿¡ ÇÕ»ê
+		//Totalì— í•©ì‚°
 		DiffTick = (endTick.QuadPart - m_SampleData.s_StartTick.QuadPart);
 		m_SampleData.s_TotalTime += DiffTick;
 
-		//MAX°ª °»½Å
+		//MAXê°’ ê°±ì‹ 
 		if (m_SampleData.s_Max[0] < DiffTick)
 		{
 			uint64_t temp = m_SampleData.s_Max[0];
@@ -532,7 +532,7 @@ public:
 			m_SampleData.s_Max[1] = temp;
 		}
 
-		//MIN°ª °»½Å
+		//MINê°’ ê°±ì‹ 
 		if (m_SampleData.s_Min[0] > DiffTick)
 		{
 			uint64_t temp = m_SampleData.s_Min[0];
@@ -540,36 +540,36 @@ public:
 			m_SampleData.s_Min[1] = temp;
 		}
 
-		//È£Ãâ·® Áõ°¡
+		//í˜¸ì¶œëŸ‰ ì¦ê°€
 		m_SampleData.s_CallTime++;
 
-		//¿¡·¯ ÇÃ·¡±× ¼³Á¤
+		//ì—ëŸ¬ í”Œë˜ê·¸ ì„¤ì •
 		m_SampleData.s_ErrorFlag = 0x0010;
 
 
-		//¸â¹ö º¯¼ö¿¡ ÀúÀåµÈ °ª °»½Å ÈÄ ÇØ½Ã Å×ÀÌºí¿¡ ÀúÀå
+		//ë©¤ë²„ ë³€ìˆ˜ì— ì €ì¥ëœ ê°’ ê°±ì‹  í›„ í•´ì‹œ í…Œì´ë¸”ì— ì €ì¥
 		PROFILE_MAP_PTR pTable;
 		pTable = (PROFILE_MAP_PTR)TlsGetValue(CProfilerManager::GetInstance()->GetTlsIndex());
 		
 		std::unordered_map<std::wstring, st_PROFILE_DATA>::iterator it = pTable->find(m_SampleData.s_Name);
 
-		//»õ·Î¿î TagÀÏ¶§
+		//ìƒˆë¡œìš´ Tagì¼ë•Œ
 		if (it == pTable->end())
 		{
 			pTable->insert(std::pair<std::wstring, st_PROFILE_DATA>(m_SampleData.s_Name, m_SampleData));
 			return;
 		}
 
-		//ÀÌ¹Ì ÀÖÀ¸¸é
+		//ì´ë¯¸ ìˆìœ¼ë©´
 		it->second = m_SampleData;
 		return;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
-    // ÇÁ·ÎÆÄÀÏ¸µ µÈ µ¥ÀÌÅÍ¸¦ ¸ğµÎ ÃÊ±âÈ­ ÇÑ´Ù.
+    // í”„ë¡œíŒŒì¼ë§ ëœ ë°ì´í„°ë¥¼ ëª¨ë‘ ì´ˆê¸°í™” í•œë‹¤.
     // 
-    // Parameters: ¾øÀ½.
-    // Return: ¾øÀ½.
+    // Parameters: ì—†ìŒ.
+    // Return: ì—†ìŒ.
     /////////////////////////////////////////////////////////////////////////////
 	void ProfileReset()
 	{

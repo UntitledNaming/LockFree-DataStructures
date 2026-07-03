@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "LockFreeMemoryPoolLive.h"
 
 template <typename T>
@@ -19,7 +19,7 @@ private:
 public:
 	Stack(int size = 0)
 	{
-		//�޸� Ǯ �Ҵ�
+		//메모리 풀 할당
 		m_pMemoryPool = new CMemoryPool<Node>(size);
 		m_pTopNode = nullptr;
 		m_size = 0;

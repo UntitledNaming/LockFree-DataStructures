@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "LockFreeMemoryPool.h"
 
 #define LOG_BUFFER_SIZE 5000
@@ -21,13 +21,13 @@ private:
 private:
 	struct st_DEBUGMEMORY_LOG
 	{
-		int      s_Type;           // Push³Ä PopÀÌ³Ä
-		int      s_LogicTime;      // ¾î¶² ±¸°£¿¡¼­ ·Î±× ³²°å´ÂÁö
+		int      s_Type;           // Pushëƒ Popì´ëƒ
+		int      s_LogicTime;      // ì–´ë–¤ êµ¬ê°„ì—ì„œ ë¡œê·¸ ë‚¨ê²¼ëŠ”ì§€
 		int      s_ThreadID;
 
 		uint64_t s_LogIndex;
-		Node*    s_LocalNodePtr;   // ½º·¹µå°¡ Áö¿ª¿¡ ÀúÀåÇÑ Head or Tail ³ëµå ÁÖ¼Ò°ª
-		Node*    s_NextNodePtr;    // ½º·¹µå°¡ Áö¿ª¿¡ ÀúÀåÇÑ »õ·Ó°Ô Enqueue or DequeueÈÄ ¹Ù²ğ Head, Tail ÁÖ¼Ò°ª
+		Node*    s_LocalNodePtr;   // ìŠ¤ë ˆë“œê°€ ì§€ì—­ì— ì €ì¥í•œ Head or Tail ë…¸ë“œ ì£¼ì†Œê°’
+		Node*    s_NextNodePtr;    // ìŠ¤ë ˆë“œê°€ ì§€ì—­ì— ì €ì¥í•œ ìƒˆë¡­ê²Œ Enqueue or Dequeueí›„ ë°”ë€” Head, Tail ì£¼ì†Œê°’
 		Node*    s_realNodePtr;
 		Node*    s_retNodePtr;
 	};
@@ -35,7 +35,7 @@ private:
 public:
 	LFQueue() : m_MemoryPool(2000)
 	{
-		//ÁÖ¼Ò bit Ã¼Å©
+		//ì£¼ì†Œ bit ì²´í¬
 		SYSTEM_INFO info;
 		GetSystemInfo(&info);
 		wprintf(L" lpMinimumApplicationAddress : 0x%016llx \n", info.lpMinimumApplicationAddress);
@@ -47,7 +47,7 @@ public:
 			__debugbreak();
 		}
 
-		//¸â¹ö º¯¼ö ÃÊ±âÈ­
+		//ë©¤ë²„ ë³€ìˆ˜ ì´ˆê¸°í™”
 		m_size     = 0;
 		m_HeadCnt  = 0;
 		m_TailCnt  = 0;
@@ -57,7 +57,7 @@ public:
 		InitializeSRWLock(&m_FileLock);
 
 
-		//´õ¹Ì ³ëµå 1°³ »ı¼º
+		//ë”ë¯¸ ë…¸ë“œ 1ê°œ ìƒì„±
 		uint64_t headTag;
 		uint64_t tailTag;
 
@@ -97,14 +97,14 @@ public:
 			hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, m_ThreadID[i]);
 			if (hThread == NULL)
 			{
-				printf("OpenThread ½ÇÆĞ. ¿À·ù ÄÚµå: %d\n", GetLastError());
+				printf("OpenThread ì‹¤íŒ¨. ì˜¤ë¥˜ ì½”ë“œ: %d\n", GetLastError());
 				return false;
 			}
 
 			suspendCount = SuspendThread(hThread);
 			if (suspendCount == (DWORD)-1)
 			{
-				printf("SuspendThread ½ÇÆĞ. ¿À·ù ÄÚµå: %d\n", GetLastError());
+				printf("SuspendThread ì‹¤íŒ¨. ì˜¤ë¥˜ ì½”ë“œ: %d\n", GetLastError());
 				CloseHandle(hThread);
 				return false;
 			}
@@ -116,7 +116,7 @@ public:
 
 	void Capture(uint64_t index, int type, int LogicTime, DWORD threadID, Node* LocalNodePtr, Node* NextNodePtr, Node* readNodePtr, Node* retCAS)
 	{
-		//·Î±× ÀúÀå
+		//ë¡œê·¸ ì €ì¥
 		m_LOG_BUFFER[index % LOG_BUFFER_SIZE].s_Type = type;
 		m_LOG_BUFFER[index % LOG_BUFFER_SIZE].s_LogicTime = LogicTime;
 		m_LOG_BUFFER[index % LOG_BUFFER_SIZE].s_ThreadID = threadID;
@@ -136,12 +136,12 @@ public:
 		InterlockedExchange64((volatile __int64*)&m_FileLogFlag, 1);
 
 
-		//ÆÄÀÏ ÀÌ¸§
+		//íŒŒì¼ ì´ë¦„
 		const WCHAR* fileName = L"LFSLog.txt";
 		err = _wfopen_s(&fp, fileName, L"w+");
 		if (err != 0)
 		{
-			wprintf(L"ÆÄÀÏ ¿ÀÇÂ ½ÇÆĞ \n");
+			wprintf(L"íŒŒì¼ ì˜¤í”ˆ ì‹¤íŒ¨ \n");
 			ReleaseSRWLockExclusive(&m_FileLock);
 			return;
 		}
@@ -187,7 +187,7 @@ public:
 		int loopCnt2 = 0;
 		int loopCnt3 = 0;
 
-		//½Å±Ô ³ëµå »ı¼º
+		//ì‹ ê·œ ë…¸ë“œ ìƒì„±
 		newNode = m_MemoryPool.Alloc();
 		newNode->_data = InputParam;
 		newNode->_next = (Node*)0xFFFFFFFFFFFFFFFF;
@@ -215,7 +215,7 @@ public:
 
 			localTailNext = (Node*)((UINT64)localTailNext | (tailTag));
 
-			//next°¡ nullptrÀÌ ¾Æ´Ï¶ó¸é tailÀ» ¹Ù²ÙÀÚ.
+			//nextê°€ nullptrì´ ì•„ë‹ˆë¼ë©´ tailì„ ë°”ê¾¸ì.
 			retCAS = InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail);
 
 			if (loopCnt3 < 500)
@@ -241,7 +241,7 @@ public:
 			}
 			loopCnt2++;
 
-			//_tail->next ¿øÀÚÀûÀ¸·Î º¯°æ ½Ãµµ
+			//_tail->next ì›ìì ìœ¼ë¡œ ë³€ê²½ ì‹œë„
 			if (InterlockedCompareExchange64((__int64*)&realTail->_next, (__int64)newNode, (__int64)nullptr) == (__int64)nullptr)
 			{
 				newNode->_next = nullptr;
@@ -258,16 +258,16 @@ public:
 				Capture(index, 0, 1, curID, localTail, newNode, realTail);
 
 
-				//¼º°øÇÏ¸é tailµµ ¿øÀÚÀûÀ¸·Î º¯°æ
+				//ì„±ê³µí•˜ë©´ tailë„ ì›ìì ìœ¼ë¡œ ë³€ê²½
 				ret2ndCAS = InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
 
-				//tail³ëµå Àç°»½Å
+				//tailë…¸ë“œ ì¬ê°±ì‹ 
 				refreshTail = m_pTail;
 				RealrefreshTail = (Node*)((uint64_t)refreshTail & BITMASK);
 				if (RealrefreshTail->_next == nullptr)
 					break;
 
-				//2nd CAS ½ÇÆĞ
+				//2nd CAS ì‹¤íŒ¨
 				if (ret2ndCAS != (uint64_t)refreshTail)
 				{
 
@@ -275,7 +275,7 @@ public:
 					retRefreshTail = m_pTail;
 					retRealRefreshTail = (Node*)((uint64_t)retRefreshTail & BITMASK);
 
-					//local°ú refresh¶û tag¸¸ ´Ù¸¥ °æ¿ì(Áï, bitmask Á¦°Å½Ã ³ëµå ÁÖ¼Ò °°Àº °æ¿ì)
+					//localê³¼ refreshë‘ tagë§Œ ë‹¤ë¥¸ ê²½ìš°(ì¦‰, bitmask ì œê±°ì‹œ ë…¸ë“œ ì£¼ì†Œ ê°™ì€ ê²½ìš°)
 					if (retRealRefreshTail == realTail)
 					{
 						InterlockedExchange64((volatile __int64*)&m_pTail, (__int64)newNode);
@@ -332,11 +332,11 @@ public:
 							break;
 						}
 
-						//¸Ç³¡ ³ëµå°¡ ¾Æ´Ï¸é º¯°æ
+						//ë§¨ë ë…¸ë“œê°€ ì•„ë‹ˆë©´ ë³€ê²½
 						localTempTail = localTailNext;
 					}
 
-					//2ndCAS ÁøÇà
+					//2ndCAS ì§„í–‰
 					newNode = (Node*)((UINT64)newNode | (retCnt << 47));
 					ret2ndCAS = InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
 					if ((Node*)ret2ndCAS != localTail)
@@ -351,28 +351,28 @@ public:
 #endif
 
 #ifdef method6
-				//¼º°øÇÏ¸é tailµµ ¿øÀÚÀûÀ¸·Î º¯°æ
+				//ì„±ê³µí•˜ë©´ tailë„ ì›ìì ìœ¼ë¡œ ë³€ê²½
 				ret2ndCAS = InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
 				if (ret2ndCAS != (uint64_t)localTail)
 				{
-					//³ªÁß¿¡ 1st CASÇÑ ½º·¹µå°¡ tailÀ» °á±¹ ¸ø¹Ù²Ù´Â°Ô ¹®Á¦´Ï tail->next°¡ nullptrÀÌ µÉ ¶§±îÁö
-					//¿©±â¼­ ¼öÁ¤ÇØÁÖ´Â °ÍÀÓ.
+					//ë‚˜ì¤‘ì— 1st CASí•œ ìŠ¤ë ˆë“œê°€ tailì„ ê²°êµ­ ëª»ë°”ê¾¸ëŠ”ê²Œ ë¬¸ì œë‹ˆ tail->nextê°€ nullptrì´ ë  ë•Œê¹Œì§€
+					//ì—¬ê¸°ì„œ ìˆ˜ì •í•´ì£¼ëŠ” ê²ƒì„.
 					while (1)
 					{
-						//tag¶§±â
+						//tagë•Œê¸°
 						retReal2ndCAS = (Node*)((uint64_t)ret2ndCAS & BITMASK);
 
-						//next ±¸ÇÏ±â
+						//next êµ¬í•˜ê¸°
 						retNextNode = retReal2ndCAS->_next;
 
-						//nullptrÀÌ¸é Å»Ãâ
+						//nullptrì´ë©´ íƒˆì¶œ
 						if (retNextNode == nullptr)
 						{
 							m_pTail = (Node*)((UINT64)retReal2ndCAS | (retCnt << 47));
 							break;
 						}
 
-						//¾Æ´Ï¸é ´ÙÀ½ next ³ëµå ÁÖ¼Ò¸¦ ret2ndCAS·Î ¸¸µé±â
+						//ì•„ë‹ˆë©´ ë‹¤ìŒ next ë…¸ë“œ ì£¼ì†Œë¥¼ ret2ndCASë¡œ ë§Œë“¤ê¸°
 						ret2ndCAS = (uint64_t)retNextNode;
 
 					}
@@ -381,7 +381,7 @@ public:
 
 #endif
 #pragma endregion
-				//¼º°øÇÏ¸é tailµµ ¿øÀÚÀûÀ¸·Î º¯°æ
+				//ì„±ê³µí•˜ë©´ tailë„ ì›ìì ìœ¼ë¡œ ë³€ê²½
 				ret2ndCAS = InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
 				if (ret2ndCAS != (uint64_t)localTail)
 				{
@@ -406,7 +406,7 @@ public:
 			__debugbreak();
 		}
 
-		//size Áõ°¡´Â ¸ğµç Ã³¸® ³¡³ª°í
+		//size ì¦ê°€ëŠ” ëª¨ë“  ì²˜ë¦¬ ëë‚˜ê³ 
 		InterlockedIncrement(&m_size);
 
 		while (1)
@@ -429,7 +429,7 @@ public:
 
 			localTailNext = (Node*)((UINT64)localTailNext | (tailTag));
 
-			//next°¡ nullptrÀÌ ¾Æ´Ï¶ó¸é tailÀ» ¹Ù²ÙÀÚ.
+			//nextê°€ nullptrì´ ì•„ë‹ˆë¼ë©´ tailì„ ë°”ê¾¸ì.
 			retCAS = InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail);
 
 			if (loopCnt3 < 500)
@@ -509,12 +509,12 @@ public:
 		index = InterlockedIncrement64((__int64*)&m_LogIndex);
 		Capture(index, 1, 1, curID, localHead, localHeadNext, realHead, nullptr);
 
-		//µ¥ÀÌÅÍ ¹İÈ¯
+		//ë°ì´í„° ë°˜í™˜
 		localHeadNext = (Node*)((uint64_t)localHeadNext & BITMASK);
 
 		OutputParam = localHeadNext->_data;
 		InterlockedDecrement64((__int64*) & m_size);
-		//³ëµå Á¦°Å
+		//ë…¸ë“œ ì œê±°
 		if (!m_MemoryPool.Free(realHead))
 			__debugbreak();
 
@@ -542,13 +542,13 @@ private:
 	CMemoryPool<Node>     m_MemoryPool;
 
 private:
-	//µğ¹ö±ë¿ë º¯¼ö
+	//ë””ë²„ê¹…ìš© ë³€ìˆ˜
 	uint64_t              m_LogIndex;
 	st_DEBUGMEMORY_LOG    m_LOG_BUFFER[LOG_BUFFER_SIZE];
 	
 
 private:
-	//ÆÄÀÏ ÀúÀå º¯¼öµé
+	//íŒŒì¼ ì €ì¥ ë³€ìˆ˜ë“¤
 	static uint16_t       m_HandleIndex;
 	static uint64_t       m_FileLogFlag;
 	static DWORD          m_ThreadID[MAX_LEN];

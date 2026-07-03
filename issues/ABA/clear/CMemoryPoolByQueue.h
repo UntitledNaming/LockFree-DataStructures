@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <queue>
 #include <windows.h>
 
@@ -15,7 +15,7 @@ public:
 	{
 		EnterCriticalSection(&cs);
 
-		//¸¸¾à Ç®¿¡ ³ëµå°¡ ÀÖÀ¸¸é 
+		//ë§Œì•½ í’€ì— ë…¸ë“œê°€ ìˆìœ¼ë©´ 
 		if (!pool.empty())
 		{
 			T* pData = pool.front();

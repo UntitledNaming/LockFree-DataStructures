@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #pragma once
 #include "LockFreeMemoryPoolLive.h"
 
@@ -9,8 +9,8 @@
 
 
 /*
-*  Æ¯Â¡ : »ı¼ºÀÚ¿¡¼­ °ø¿ë ¶ôÇÁ¸® Ç® µ¿ÀûÇÒ´ç ÇÔ.
-*         Àü¿ª ¶ôÇÁ¸® °´Ã¼ ¹è¿­ÀÌ main ½º·¹µå Àü ÇÑ ½º·¹µå°¡ °´Ã¼ »ı¼ºÇØÁÖ´Âµ¥ ÀÌ¶§ °ø¿ë ³ëµå Ç® µ¿Àû
+*  íŠ¹ì§• : ìƒì„±ìì—ì„œ ê³µìš© ë½í”„ë¦¬ í’€ ë™ì í• ë‹¹ í•¨.
+*         ì „ì—­ ë½í”„ë¦¬ ê°ì²´ ë°°ì—´ì´ main ìŠ¤ë ˆë“œ ì „ í•œ ìŠ¤ë ˆë“œê°€ ê°ì²´ ìƒì„±í•´ì£¼ëŠ”ë° ì´ë•Œ ê³µìš© ë…¸ë“œ í’€ ë™ì 
 */
 template<typename T>
 class LFQueueMul
@@ -37,7 +37,7 @@ public:
 public:
 	LFQueue(int size = 0)
 	{
-		//ÁÖ¼Ò bit Ã¼Å©
+		//ì£¼ì†Œ bit ì²´í¬
 		SYSTEM_INFO info;
 		GetSystemInfo(&info);
 
@@ -46,7 +46,7 @@ public:
 			__debugbreak();
 		}
 
-		// static ¸Ş¸ğ¸® Ç® »ı¼º È®ÀÎ
+		// static ë©”ëª¨ë¦¬ í’€ ìƒì„± í™•ì¸
 		if (InterlockedIncrement(&m_refCnt) == 1)
 			m_pMemoryPool = new CMemoryPool<Node>;
 		else

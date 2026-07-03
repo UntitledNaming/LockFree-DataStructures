@@ -1,4 +1,4 @@
-#include <windows.h>
+ï»¿#include <windows.h>
 #include <process.h>
 #include <stack>
 #include <queue>
@@ -20,13 +20,13 @@ int main()
     CTest* p = new CTest;
 
 
-    // »çÀü ÀÛ¾÷
+    // ì‚¬ì „ ìž‘ì—…
     p->TestInit();
 
-    // ½º·¹µå »ý¼º
+    // ìŠ¤ë ˆë“œ ìƒì„±
     p->ThreadCreate();
 
-    // ½º·¹µå Á¦°Å ¹× Á¤¸®
+    // ìŠ¤ë ˆë“œ ì œê±° ë° ì •ë¦¬
     p->TestClear();
 
 

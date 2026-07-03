@@ -1,10 +1,10 @@
-#pragma once
+ï»¿#pragma once
 #define BIT_MASK        0x00007FFFFFFFFFFF
 
 #include <windows.h>
 #include "CMemoryPoolByQueue.h"
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-//  Lock Free Stack ver 1. ÃÊ±â ¹öÀü
+//  Lock Free Stack ver 1. ì´ˆê¸° ë²„ì „
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
@@ -21,7 +21,7 @@ public:
 	LFStack()
 	{
 
-		//¸â¹ö ÃÊ±âÈ­
+		//ë©¤ë²„ ì´ˆê¸°í™”
 		Clear();
 
 
@@ -36,7 +36,7 @@ public:
 	{
 		m_pTopNode = nullptr;
 		m_topCnt = 0;
-		//¸Ş¸ğ¸® Ç® ÇÒ´ç
+		//ë©”ëª¨ë¦¬ í’€ í• ë‹¹
 		m_pMemoryPool = new CMemoryPoolQ<Node>;
 	}
 
@@ -52,7 +52,7 @@ public:
 
 		do {
 
-			//CAS ½ÇÆĞÇÏ¸é newNode¿¡ ºÙÀÎ tag¶§±â
+			//CAS ì‹¤íŒ¨í•˜ë©´ newNodeì— ë¶™ì¸ tagë•Œê¸°
 			newNode = (Node*)(((UINT64)newNode << 17) >> 17);
 
 			t = m_pTopNode;
@@ -65,10 +65,10 @@ public:
 		InterlockedIncrement64((volatile LONG64*)&m_size);
 	}
 
-	//Data´Â OutParameterÀÓ.
+	//DataëŠ” OutParameterì„.
 	bool Pop(T& Data)
 	{
-		//¸Ş¸ğ¸® ·Î±× ÁØºñ
+		//ë©”ëª¨ë¦¬ ë¡œê·¸ ì¤€ë¹„
 		Node* t;
 		Node* real;
 		Node* newTopNode;
@@ -76,7 +76,7 @@ public:
 		UINT64 retCnt = InterlockedIncrement(&m_topCnt);
 
 		do {
-			t = m_pTopNode; //±âÁ¸ Å¾ ³ëµå ÀúÀå
+			t = m_pTopNode; //ê¸°ì¡´ íƒ‘ ë…¸ë“œ ì €ì¥
 
 			real = (Node*)((UINT64)t & BIT_MASK);
 			if (real == nullptr)
@@ -91,7 +91,7 @@ public:
 		} while (_InterlockedCompareExchange64((volatile __int64*)&m_pTopNode, (__int64)newTopNode, (__int64)t) != (__int64)t);
 
 
-		//Å¾ ³ëµå Á¦°Å
+		//íƒ‘ ë…¸ë“œ ì œê±°
 		Data = real->s_data;
 
 		m_pMemoryPool->Free(real);

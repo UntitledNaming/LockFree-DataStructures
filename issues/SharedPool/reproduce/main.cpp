@@ -1,4 +1,4 @@
-#include <windows.h>
+ï»¿#include <windows.h>
 #include <thread>
 #include "LFQSingleLive.h"
 #pragma comment(lib, "winmm.lib")
@@ -17,19 +17,19 @@ int main()
 
 	HANDLE hThread[THREAD_COUNT];
 
-	// 1, 2 ³ëµå 1¹ø Å¥¿¡ ³Ö±â
+	// 1, 2 ë…¸ë“œ 1ë²ˆ íì— ë„£ê¸°
 	for (int i = 1; i <= 2; i++)
 	{
 		g_queue1.Enqueue(i);
 	}
 
-	// 1001, 1002 ³ëµå 2¹ø Å¥¿¡ ³Ö±â
+	// 1001, 1002 ë…¸ë“œ 2ë²ˆ íì— ë„£ê¸°
 	for (int i = 1001; i <= 1002; i++)
 	{
 		g_queue2.Enqueue(i);
 	}
 
-	//½º·¹µå »ı¼º
+	//ìŠ¤ë ˆë“œ ìƒì„±
 	hThread[0] = (HANDLE)_beginthreadex(NULL, 0, WorkerThread1, NULL, NULL, NULL);
 	hThread[1] = (HANDLE)_beginthreadex(NULL, 0, WorkerThread2, NULL, NULL, NULL);
 	hThread[2] = (HANDLE)_beginthreadex(NULL, 0, WorkerThread3, NULL, NULL, NULL);

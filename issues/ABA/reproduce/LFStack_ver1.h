@@ -1,8 +1,8 @@
-#pragma once
+ï»¿#pragma once
 #include <windows.h>
 #include "CMemoryPoolByQueue.h"
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-//  Lock Free Stack ver 1. ÃÊ±â ¹öÀü
+//  Lock Free Stack ver 1. ì´ˆê¸° ë²„ì „
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define LOG_BUFFER_SIZE 50000
 #define MAX_LEN         300
@@ -19,20 +19,20 @@ public:
 
 	struct st_DEBUGMEMORY_LOG
 	{
-		int s_Type;                // Push³Ä PopÀÌ³Ä
-		int s_LogicTime;           // ¾î¶² ±¸°£¿¡¼­ ·Î±× ³²°å´ÂÁö
+		int s_Type;                // Pushëƒ Popì´ëƒ
+		int s_LogicTime;           // ì–´ë–¤ êµ¬ê°„ì—ì„œ ë¡œê·¸ ë‚¨ê²¼ëŠ”ì§€
 		int s_ThreadID;
 
 		uint64_t s_LogIndex;
-		Node* s_LocalTop;       // ½º·¹µå°¡ Áö¿ª¿¡ ÀúÀåÇÑ Top ¸â¹öº¯¼ö°ª
-		Node* s_LocalNewTop;    // ½º·¹µå°¡ Áö¿ª¿¡ ÀúÀåÇÑ »õ·Ó°Ô TopÀÌ µÉ ³ëµå ÁÖ¼Ò°ª
+		Node* s_LocalTop;       // ìŠ¤ë ˆë“œê°€ ì§€ì—­ì— ì €ì¥í•œ Top ë©¤ë²„ë³€ìˆ˜ê°’
+		Node* s_LocalNewTop;    // ìŠ¤ë ˆë“œê°€ ì§€ì—­ì— ì €ì¥í•œ ìƒˆë¡­ê²Œ Topì´ ë  ë…¸ë“œ ì£¼ì†Œê°’
 	};
 
 public:
 	LFStack()
 	{
 
-		//¸â¹ö ÃÊ±âÈ­
+		//ë©¤ë²„ ì´ˆê¸°í™”
 		Clear();
 
 
@@ -50,12 +50,12 @@ public:
 		DWORD suspendCount;
 
 
-		//ÆÄÀÏ ÀÌ¸§
+		//íŒŒì¼ ì´ë¦„
 		const WCHAR* fileName = L"LFSLog.txt";
 		err = _wfopen_s(&fp, fileName, L"w+");
 		if (err != 0)
 		{
-			wprintf(L"ÆÄÀÏ ¿ÀÇÂ ½ÇÆĞ \n");
+			wprintf(L"íŒŒì¼ ì˜¤í”ˆ ì‹¤íŒ¨ \n");
 			return;
 		}
 
@@ -83,7 +83,7 @@ public:
 
 	void StackCapture(unsigned __int64 index, int type, int LogicTime, DWORD threadID, Node* localTop, Node* localNewTop)
 	{
-		//·Î±× ÀúÀå
+		//ë¡œê·¸ ì €ì¥
 		m_LOG_BUFFER[index % LOG_BUFFER_SIZE].s_Type = type;
 		m_LOG_BUFFER[index % LOG_BUFFER_SIZE].s_LogicTime = LogicTime;
 		m_LOG_BUFFER[index % LOG_BUFFER_SIZE].s_ThreadID = threadID;
@@ -97,7 +97,7 @@ public:
 	{
 		m_pTopNode = nullptr;
 
-		//¸Ş¸ğ¸® Ç® ÇÒ´ç
+		//ë©”ëª¨ë¦¬ í’€ í• ë‹¹
 		m_pMemoryPool = new CMemoryPoolQ<Node>;
 		m_LogIndex = -1;
 	}
@@ -124,17 +124,17 @@ public:
 		InterlockedIncrement64((volatile LONG64*)&m_size);
 	}
 
-	//Data´Â OutParameterÀÓ.
+	//DataëŠ” OutParameterì„.
 	bool Pop(T& Data)
 	{
 		DWORD curID = GetCurrentThreadId();
 
-		//¸Ş¸ğ¸® ·Î±× ÁØºñ
+		//ë©”ëª¨ë¦¬ ë¡œê·¸ ì¤€ë¹„
 		Node* t;
 		Node* newTopNode;
 
 		do {
-			t = m_pTopNode; //±âÁ¸ Å¾ ³ëµå ÀúÀå
+			t = m_pTopNode; //ê¸°ì¡´ íƒ‘ ë…¸ë“œ ì €ì¥
 
 			if (t == nullptr)
 			{
@@ -150,7 +150,7 @@ public:
 
 
 
-		//Å¾ ³ëµå Á¦°Å
+		//íƒ‘ ë…¸ë“œ ì œê±°
 		Data = t->s_data;
 
 		if (!m_pMemoryPool->Free(t))
@@ -183,7 +183,7 @@ private:
 	CMemoryPoolQ<Node>*               m_pMemoryPool;
 
 public:
-	//·Î±× ¹öÆÛ
+	//ë¡œê·¸ ë²„í¼
 	st_DEBUGMEMORY_LOG           m_LOG_BUFFER[LOG_BUFFER_SIZE];
 	uint64_t                     m_LogIndex;
 };

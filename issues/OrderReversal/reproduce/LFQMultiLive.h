@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "LockFreeMemoryPoolLive.h"
 
 #define LOG_BUFFER_SIZE 5000
@@ -9,8 +9,8 @@
 
 
 /*
-*  Æ¯Â¡ : »ı¼ºÀÚ¿¡¼­ °ø¿ë ¶ôÇÁ¸® Ç® µ¿ÀûÇÒ´ç ÇÔ.
-*         Àü¿ª ¶ôÇÁ¸® °´Ã¼ ¹è¿­ÀÌ main ½º·¹µå Àü ÇÑ ½º·¹µå°¡ °´Ã¼ »ı¼ºÇØÁÖ´Âµ¥ ÀÌ¶§ °ø¿ë ³ëµå Ç® µ¿Àû
+*  íŠ¹ì§• : ìƒì„±ìì—ì„œ ê³µìš© ë½í”„ë¦¬ í’€ ë™ì í• ë‹¹ í•¨.
+*         ì „ì—­ ë½í”„ë¦¬ ê°ì²´ ë°°ì—´ì´ main ìŠ¤ë ˆë“œ ì „ í•œ ìŠ¤ë ˆë“œê°€ ê°ì²´ ìƒì„±í•´ì£¼ëŠ”ë° ì´ë•Œ ê³µìš© ë…¸ë“œ í’€ ë™ì 
 */
 template<typename T>
 class LFQueueMul
@@ -46,7 +46,7 @@ public:
 	
 	LFQueueMul(int size = 0)
 	{
-		//ÁÖ¼Ò bit Ã¼Å©
+		//ì£¼ì†Œ bit ì²´í¬
 		SYSTEM_INFO info;
 		GetSystemInfo(&info);
 
@@ -55,7 +55,7 @@ public:
 			__debugbreak();
 		}
 
-		// static ¸Ş¸ğ¸® Ç® »ı¼º È®ÀÎ
+		// static ë©”ëª¨ë¦¬ í’€ ìƒì„± í™•ì¸
 		if (InterlockedIncrement(&m_refCnt) == 1)
 			m_pMemoryPool = new CMemoryPool<Node>;
 		else
@@ -66,14 +66,14 @@ public:
 			}
 		}
 
-		//¸â¹ö º¯¼ö ÃÊ±âÈ­
+		//ë©¤ë²„ ë³€ìˆ˜ ì´ˆê¸°í™”
 		m_size = size;
 		m_HeadCnt = 0;
 		m_TailCnt = 0;
 		m_Qid = (UINT64) & m_size;
 
 
-		//´õ¹Ì ³ëµå 1°³ »ı¼º
+		//ë”ë¯¸ ë…¸ë“œ 1ê°œ ìƒì„±
 		Node* dmyNode =  m_pMemoryPool->Alloc();
 		dmyNode->_next = nullptr;
 		dmyNode->_Qid = m_Qid;
@@ -108,7 +108,7 @@ public:
 		UINT64   retCnt;
 		UINT64   tailTag;
 
-		//½Å±Ô ³ëµå »ı¼º
+		//ì‹ ê·œ ë…¸ë“œ ìƒì„±
 		newNode = m_pMemoryPool->Alloc();
 		newNode->_data = InputParam;
 		newNode->_next = (Node*)0xFFFFFFFFFFFFFFFF;
@@ -116,11 +116,11 @@ public:
 
 		retCnt = InterlockedIncrement(&m_TailCnt);
 
-		//ºñ±³ ³ëµå
+		//ë¹„êµ ë…¸ë“œ
 		CmpNode cmp;
 
 
-		//»çÀü ÀÛ¾÷
+		//ì‚¬ì „ ì‘ì—…
 		while (1)
 		{
 			localTail = m_pTail;
@@ -133,12 +133,12 @@ public:
 
 			localTailNext = (Node*)((UINT64)localTailNext | (tailTag));
 
-			//next°¡ nullptrÀÌ ¾Æ´Ï¶ó¸é tailÀ» ¹Ù²ÙÀÚ.
+			//nextê°€ nullptrì´ ì•„ë‹ˆë¼ë©´ tailì„ ë°”ê¾¸ì.
 			InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail);
 
 		}
 
-		//CAS ÀÛ¾÷
+		//CAS ì‘ì—…
 		while (1)
 		{
 
@@ -148,7 +148,7 @@ public:
 			cmp.s_Qid = m_Qid;
 			cmp.s_next = nullptr;
 
-			//_tail->next ¿øÀÚÀûÀ¸·Î º¯°æ ½Ãµµ
+			//_tail->next ì›ìì ìœ¼ë¡œ ë³€ê²½ ì‹œë„
 			if (InterlockedCompareExchange128((__int64*) & realTail->_next, (__int64)m_Qid, (__int64)newNode, (long long*)&cmp))
 			{
 
@@ -156,7 +156,7 @@ public:
 				newNode = (Node*)((UINT64)newNode | (retCnt << 47));
 
 
-				//¼º°øÇÏ¸é tailµµ ¿øÀÚÀûÀ¸·Î º¯°æ
+				//ì„±ê³µí•˜ë©´ tailë„ ì›ìì ìœ¼ë¡œ ë³€ê²½
 				InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
 
 				break;
@@ -166,7 +166,7 @@ public:
 		localTail = m_pTail;
 		realTail = (Node*)((UINT64)localTail & BITMASK);
 
-		//size Áõ°¡´Â ¸ğµç Ã³¸® ³¡³ª°í
+		//size ì¦ê°€ëŠ” ëª¨ë“  ì²˜ë¦¬ ëë‚˜ê³ 
 		InterlockedIncrement(&m_size);
 	}
 
@@ -183,7 +183,7 @@ public:
 		UINT64   retCnt;
 		UINT64   tailTag;
 
-		//size Ã¼Å©½Ã À½¼ö¸é Áõ°¡½ÃÅ°°í ¸®ÅÏ
+		//size ì²´í¬ì‹œ ìŒìˆ˜ë©´ ì¦ê°€ì‹œí‚¤ê³  ë¦¬í„´
 		if (InterlockedDecrement(&m_size) < 0)
 		{
 			InterlockedIncrement(&m_size);
@@ -191,7 +191,7 @@ public:
 		}
 
 
-		//»çÀü ÀÛ¾÷
+		//ì‚¬ì „ ì‘ì—…
 		while (1)
 		{
 			localTail = m_pTail;
@@ -205,7 +205,7 @@ public:
 
 			localTailNext = (Node*)((UINT64)localTailNext | (tailTag));
 
-			//next°¡ nullptrÀÌ ¾Æ´Ï¶ó¸é tailÀ» ¹Ù²ÙÀÚ.
+			//nextê°€ nullptrì´ ì•„ë‹ˆë¼ë©´ tailì„ ë°”ê¾¸ì.
 			InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail);
 
 		}
@@ -230,12 +230,12 @@ public:
 		}
 
 
-		//µ¥ÀÌÅÍ ¹İÈ¯
+		//ë°ì´í„° ë°˜í™˜
 		localHeadNext = (Node*)((UINT64)localHeadNext & BITMASK);
 
 		OutputParam = localHeadNext->_data;
 
-		//³ëµå Á¦°Å
+		//ë…¸ë“œ ì œê±°
 		if (!m_pMemoryPool->Free(realHead))
 			__debugbreak();
 

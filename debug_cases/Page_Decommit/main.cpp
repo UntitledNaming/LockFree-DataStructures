@@ -1,4 +1,4 @@
-#pragma comment(lib, "winmm.lib")
+ï»¿#pragma comment(lib, "winmm.lib")
 
 #include <windows.h>
 #include <thread>
@@ -22,7 +22,7 @@ int main()
 		g_Stack.Push(i);
 	}
 
-	//½º·¹µå »ı¼º
+	//ìŠ¤ë ˆë“œ ìƒì„±
 	for (int i = 0; i < THREAD_COUNT; i++)
 	{
 		hThread[i] = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, NULL, NULL, NULL);

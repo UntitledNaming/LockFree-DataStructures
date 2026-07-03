@@ -1,7 +1,7 @@
-#pragma once
+Ôªø#pragma once
 #include <windows.h>
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-//  Lock Free Stack ver 1. √ ±‚ πˆ¿¸
+//  Lock Free Stack ver 1. Ï¥àÍ∏∞ Î≤ÑÏ†Ñ
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define LOG_BUFFER_SIZE 50000
 #define MAX_LEN         300
@@ -18,20 +18,20 @@ public:
 
 	struct st_DEBUGMEMORY_LOG
 	{
-		int s_Type;                // Push≥ƒ Pop¿Ã≥ƒ
-		int s_LogicTime;           // æÓ∂≤ ±∏∞£ø°º≠ ∑Œ±◊ ≥≤∞Â¥¬¡ˆ
+		int s_Type;                // PushÎÉê PopÏù¥ÎÉê
+		int s_LogicTime;           // Ïñ¥Îñ§ Íµ¨Í∞ÑÏóêÏÑú Î°úÍ∑∏ ÎÇ®Í≤ºÎäîÏßÄ
 		int s_ThreadID;
 
 		uint64_t s_LogIndex;
-		Node* s_LocalTop;       // Ω∫∑πµÂ∞° ¡ˆø™ø° ¿˙¿Â«— Top ∏‚πˆ∫Øºˆ∞™
-		Node* s_LocalNewTop;    // Ω∫∑πµÂ∞° ¡ˆø™ø° ¿˙¿Â«— ªı∑”∞‘ Top¿Ã µ… ≥ÎµÂ ¡÷º“∞™
+		Node* s_LocalTop;       // Ïä§Î†àÎìúÍ∞Ä ÏßÄÏó≠Ïóê Ï†ÄÏû•Ìïú Top Î©§Î≤ÑÎ≥ÄÏàòÍ∞í
+		Node* s_LocalNewTop;    // Ïä§Î†àÎìúÍ∞Ä ÏßÄÏó≠Ïóê Ï†ÄÏû•Ìïú ÏÉàÎ°≠Í≤å TopÏù¥ Îê† ÎÖ∏Îìú Ï£ºÏÜåÍ∞í
 	};
 
 public:
 	LFStack()
 	{
 
-		//∏‚πˆ √ ±‚»≠
+		//Î©§Î≤Ñ Ï¥àÍ∏∞Ìôî
 		Clear();
 
 
@@ -49,12 +49,12 @@ public:
 		DWORD suspendCount;
 
 
-		//∆ƒ¿œ ¿Ã∏ß
+		//ÌååÏùº Ïù¥Î¶Ñ
 		const WCHAR* fileName = L"LFSLog.txt";
 		err = _wfopen_s(&fp, fileName, L"w+");
 		if (err != 0)
 		{
-			wprintf(L"∆ƒ¿œ ø¿«¬ Ω«∆– \n");
+			wprintf(L"ÌååÏùº Ïò§Ìîà Ïã§Ìå® \n");
 			return;
 		}
 
@@ -82,7 +82,7 @@ public:
 
 	void StackCapture(unsigned __int64 index, int type, int LogicTime, DWORD threadID, Node* localTop, Node* localNewTop)
 	{
-		//∑Œ±◊ ¿˙¿Â
+		//Î°úÍ∑∏ Ï†ÄÏû•
 		m_LOG_BUFFER[index % LOG_BUFFER_SIZE].s_Type = type;
 		m_LOG_BUFFER[index % LOG_BUFFER_SIZE].s_LogicTime = LogicTime;
 		m_LOG_BUFFER[index % LOG_BUFFER_SIZE].s_ThreadID = threadID;
@@ -121,18 +121,18 @@ public:
 		InterlockedIncrement64((volatile LONG64*)&m_size);
 	}
 
-	//Data¥¬ OutParameter¿”.
+	//DataÎäî OutParameterÏûÑ.
 	bool Pop(T& Data)
 	{
 		DWORD curID = GetCurrentThreadId();
 		__int64 ret;
 
-		//∏ﬁ∏∏Æ ∑Œ±◊ ¡ÿ∫Ò
+		//Î©îÎ™®Î¶¨ Î°úÍ∑∏ Ï§ÄÎπÑ
 		Node* t;
 		Node* newTopNode;
 
 		do {
-			t = m_pTopNode; //±‚¡∏ ≈æ ≥ÎµÂ ¿˙¿Â
+			t = m_pTopNode; //Í∏∞Ï°¥ ÌÉë ÎÖ∏Îìú Ï†ÄÏû•
 
 			if (t == nullptr)
 			{
@@ -149,7 +149,7 @@ public:
 		ret = InterlockedIncrement64((__int64*)&m_LogIndex);
 		StackCapture(ret, 1, 1, curID, t, newTopNode);
 
-		//≈æ ≥ÎµÂ ¡¶∞≈
+		//ÌÉë ÎÖ∏Îìú Ï†úÍ±∞
 		Data = t->s_data;
 
 		delete t;
@@ -181,7 +181,7 @@ private:
 	Node*                             m_pTopNode;
 	INT                               m_size;
 
-	//∑Œ±◊ πˆ∆€
+	//Î°úÍ∑∏ Î≤ÑÌçº
 	st_DEBUGMEMORY_LOG           m_LOG_BUFFER[LOG_BUFFER_SIZE];
 	uint64_t                     m_LogIndex;
 };

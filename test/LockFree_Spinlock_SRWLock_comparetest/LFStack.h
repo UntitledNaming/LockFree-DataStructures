@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #define MAX_LEN         300
 #define USER_MEMORY_MAX 0x00007FFFFFFFFFFF
 #define BIT_MASK        0x00007FFFFFFFFFFF
@@ -30,10 +30,10 @@ public:
 			__debugbreak();
 		}
 
-		//¸Ş¸ğ¸® Ç® ÇÒ´ç
+		//ë©”ëª¨ë¦¬ í’€ í• ë‹¹
 		m_pMemoryPool = new CMemoryPool<Node>(size);
 
-		//¸â¹ö ÃÊ±âÈ­
+		//ë©¤ë²„ ì´ˆê¸°í™”
 		Clear();
 
 		m_size = size;
@@ -54,7 +54,7 @@ public:
 
 	void Push(T InputData, INT idx, INTERLOCKCNT* m_cntarray)
 	{
-		//¸Ş¸ğ¸® ·Î±× ÁØºñ
+		//ë©”ëª¨ë¦¬ ë¡œê·¸ ì¤€ë¹„
 		DWORD    curID = GetCurrentThreadId();
 		Node*    newNode = m_pMemoryPool->Alloc();
 		Node*    oldTopNext = nullptr;
@@ -67,7 +67,7 @@ public:
 		do {
 			m_cntarray[idx].s_totalCnt++;
 
-			//CAS ½ÇÆĞÇÏ¸é newNode¿¡ ºÙÀÎ tag¶§±â
+			//CAS ì‹¤íŒ¨í•˜ë©´ newNodeì— ë¶™ì¸ tagë•Œê¸°
 			newNode = (Node*)(((uint64_t)newNode << 17) >> 17);
 
 
@@ -89,10 +89,10 @@ public:
 		InterlockedIncrement64((volatile LONG64*) & m_size);
 	}
 
-	//Data´Â OutParameterÀÓ.
+	//DataëŠ” OutParameterì„.
 	bool Pop(T& Data, INT idx, INTERLOCKCNT* m_cntarray)
 	{
-		//¸Ş¸ğ¸® ·Î±× ÁØºñ
+		//ë©”ëª¨ë¦¬ ë¡œê·¸ ì¤€ë¹„
 		DWORD curID = GetCurrentThreadId();
 
 		Node* t;
@@ -105,7 +105,7 @@ public:
 		do {
 			m_cntarray[idx].s_totalCnt++;
 
-			t = m_pTopNode; //±âÁ¸ Å¾ ³ëµå ÀúÀå
+			t = m_pTopNode; //ê¸°ì¡´ íƒ‘ ë…¸ë“œ ì €ì¥
 
 			real = (Node*)((uint64_t)t & BIT_MASK);
 			if (real == nullptr)
@@ -128,7 +128,7 @@ public:
 		} while (1);
 
 
-		//Å¾ ³ëµå Á¦°Å
+		//íƒ‘ ë…¸ë“œ ì œê±°
 		Data = real->data;
 		if (!(m_pMemoryPool->Free(real)))
 			__debugbreak();

@@ -1,4 +1,4 @@
-#pragma comment(lib, "winmm.lib")
+ï»¿#pragma comment(lib, "winmm.lib")
 
 #include <windows.h>
 #include <thread>
@@ -19,7 +19,7 @@ int main()
 	HANDLE hThread[THREAD_COUNT];
 
 
-	//½º·¹µå »ı¼º
+	//ìŠ¤ë ˆë“œ ìƒì„±
 	for (int i = 0; i < THREAD_COUNT; i++)
 	{
 		hThread[i] = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, (void*)i, NULL, NULL);

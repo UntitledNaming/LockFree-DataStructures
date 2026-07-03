@@ -1,4 +1,4 @@
-#include <windows.h>
+ï»¿#include <windows.h>
 #include <process.h>
 #include <stack>
 #include <queue>
@@ -44,7 +44,7 @@ void CTest::MonitorThread(void* pArguments)
 
         if (result == WAIT_OBJECT_0)
         {
-            // ÆÄÀÏ ÀúÀå ÀÛ¾÷
+            // íŒŒì¼ ì €ì¥ ì‘ì—…
             FileStore();
             m_EndFlag = true;
             break;
@@ -81,7 +81,7 @@ void CTest::MonitorThread(void* pArguments)
 
 void CTest::ThreadCreate()
 {
-    // ½º·¹µå »ı¼º ÀÛ¾÷
+    // ìŠ¤ë ˆë“œ ìƒì„± ì‘ì—…
     m_hThread = new std::thread[m_thCount + 1];
 
     for (int i = 0; i < m_thCount; i++)
@@ -97,7 +97,7 @@ void CTest::ThreadCreate()
 
 void CTest::TestClear()
 {
-    // Å×½ºÆ® ½º·¹µå ´ë±â
+    // í…ŒìŠ¤íŠ¸ ìŠ¤ë ˆë“œ ëŒ€ê¸°
     for (int i = 0; i < m_thCount; i++)
     {
         if (m_hThread[i].joinable())
@@ -108,7 +108,7 @@ void CTest::TestClear()
 
     SetEvent(m_FileStore);
 
-    // ÆÄÀÏ ÀúÀå ±â´Ù¸®±â
+    // íŒŒì¼ ì €ì¥ ê¸°ë‹¤ë¦¬ê¸°
     if (m_hThread[m_thCount].joinable())
     {
         m_hThread[m_thCount].join();
@@ -125,15 +125,15 @@ void CTest::TestInit()
 {
     timeBeginPeriod(1);
 
-    // ½º·¹µå °¹¼ö ÀÔ·Â
+    // ìŠ¤ë ˆë“œ ê°¯ìˆ˜ ì…ë ¥
     wprintf(L"Thread Count : ");
     wscanf(L"%d", &m_thCount);
 
-    // Å×½ºÆ® Å¸ÀÔ ÀÔ·Â(0 : À¯Àú µ¿±âÈ­ °´Ã¼ , 1 : SpinLock , 2 : LockFree)
+    // í…ŒìŠ¤íŠ¸ íƒ€ì… ì…ë ¥(0 : ìœ ì € ë™ê¸°í™” ê°ì²´ , 1 : SpinLock , 2 : LockFree)
     wprintf(L"Test Type(SRWLOCK : 0 / SpinLock : 1 / LockFree : 2 ) : ");
     wscanf(L"%d", &m_testType);
 
-    // 1È¸ Å×½ºÆ®ÇÒ ½Ã°£ ÀÔ·Â
+    // 1íšŒ í…ŒìŠ¤íŠ¸í•  ì‹œê°„ ì…ë ¥
     wprintf(L"Test Time(minute) : ");
     wscanf(L"%d", &m_testTime);
 
@@ -309,7 +309,7 @@ void CTest::FileStore()
     err = _wfopen_s(&fp, fileName.c_str(), L"ab");
     if (err != 0)
     {
-        wprintf(L"ÆÄÀÏ ¿­±â ½ÇÆĞ. ¿¡·¯ ÄÚµå: %d \n", err);
+        wprintf(L"íŒŒì¼ ì—´ê¸° ì‹¤íŒ¨. ì—ëŸ¬ ì½”ë“œ: %d \n", err);
         __debugbreak();
         return;
     }
