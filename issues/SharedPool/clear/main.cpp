@@ -1,12 +1,13 @@
 ﻿#include <windows.h>
 #include <thread>
-#include "LFQMultiLive.h"
+#include "LFQMultiTag.h"
 #pragma comment(lib, "winmm.lib")
 
 #define THREAD_COUNT 3
 
 LFQueueMul<int> g_queue1;
 LFQueueMul<int> g_queue2;
+
 unsigned int WINAPI WorkerThread1(LPVOID lpParam);
 unsigned int WINAPI WorkerThread2(LPVOID lpParam);
 unsigned int WINAPI WorkerThread3(LPVOID lpParam);
@@ -15,19 +16,14 @@ int main()
 {
 	timeBeginPeriod(1);
 
-	HANDLE hThread[THREAD_COUNT];
+	HANDLE hThread[THREAD_COUNT] = {};
 
-	// 1, 2 노드 1번 큐에 넣기
+	// 노드 1개 1번 큐에 넣어서 tail의 next에 저장된 카운트 2로 설정
 	for (int i = 1; i <= 2; i++)
 	{
 		g_queue1.Enqueue(i);
 	}
 
-	// 1001, 1002 노드 2번 큐에 넣기
-	for (int i = 1001; i <= 1002; i++)
-	{
-		g_queue2.Enqueue(i);
-	}
 
 	//스레드 생성
 	hThread[0] = (HANDLE)_beginthreadex(NULL, 0, WorkerThread1, NULL, NULL, NULL);
@@ -59,17 +55,18 @@ unsigned int __stdcall WorkerThread2(LPVOID lpParam)
 {
 	int data;
 
-	for (int i = 3; i <= 5; i++)
+	for (int i = 3; i < 5; i++)
 	{
 		g_queue1.Enqueue(i);
 	}
 
-	for (int i = 3; i <= 5; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		g_queue1.Dequeue(data);
 	}
 
-	g_queue2.Enqueue(1003);
+	g_queue2.Enqueue(1001);
+	g_queue2.Enqueue(1002);
 
 
 	return 0;

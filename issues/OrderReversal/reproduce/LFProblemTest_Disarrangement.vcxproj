@@ -125,7 +125,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="LFQMultiLive.h" />
     <ClInclude Include="LFQSingleLive.h" />
     <ClInclude Include="LockFreeMemoryPoolLive.h" />
   </ItemGroup>

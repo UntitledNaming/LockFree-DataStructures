@@ -129,6 +129,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LFQMultiLive.h" />
+    <ClInclude Include="LFQMultiTag.h" />
     <ClInclude Include="LockFreeMemoryPoolLive.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

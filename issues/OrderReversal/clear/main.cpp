@@ -1,7 +1,7 @@
 ﻿#include <windows.h>
 #include <thread>
 #include <iostream>
-#include "LFQSingleLive.h"
+#include "LFQSingleTag.h"
 #pragma comment(lib, "winmm.lib")
 
 #define THREAD_COUNT 3

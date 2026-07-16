@@ -47,9 +47,14 @@ public:
 
 	void Clear()
 	{
+		T temp;
+		while (Pop(temp))
+		{
+
+		}
+
 		m_pTopNode = nullptr;
 		m_size = 0;
-		m_topCnt = 0;
 	}
 
 	void Push(T InputData)
@@ -58,7 +63,7 @@ public:
 		Node*    newNode = m_pMemoryPool->Alloc();
 		Node*    t;
 		Node*    real;
-		UINT64   retCnt = InterlockedIncrement(&m_topCnt);
+		UINT64   retCnt = InterlockedIncrement64((long long*)&m_topCnt);
 
 		newNode->data = InputData;
 
@@ -88,7 +93,7 @@ public:
 		Node* real;
 		Node* newTopNode;
 
-		UINT64 retCnt = InterlockedIncrement(&m_topCnt);
+		UINT64 retCnt = InterlockedIncrement64((long long*)&m_topCnt);
 
 
 		do {

@@ -129,6 +129,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LFQSingleLive.h" />
+    <ClInclude Include="LFQSingleTag.h" />
     <ClInclude Include="LockFreeMemoryPoolLive.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

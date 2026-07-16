@@ -19,13 +19,13 @@ private:
 	};
 
 private:
-	Node*                  m_pHead;
-	Node*                  m_pTail;
-	LONG                   m_size;
-	UINT64                 m_HeadCnt;
+	Node*                         m_pHead;
+	Node*                         m_pTail;
+	LONG                          m_size;
+	UINT64                        m_HeadCnt;
+	UINT64                        m_TailCnt;
 
-	static CMemoryPool<Node>*     m_pMemoryPool;
-
+	CMemoryPool<Node>*            m_pMemoryPool;
 
 public:
 	LFQueue(int size = 0) 
@@ -41,19 +41,18 @@ public:
 		}
 
 		//멤버 변수 초기화
-		m_size = size;
+		m_size = 0;
 		m_HeadCnt = 0;
+		m_TailCnt = 0;
 
-		if (m_pMemoryPool == nullptr)
-			m_pMemoryPool = new CMemoryPool<Node>(size);
+		m_pMemoryPool = new CMemoryPool<Node>(size);
 
-
-		//더미 노드 1개 생성
+		//더미 노드 1개 생성s
 		Node* dmyNode = m_pMemoryPool->Alloc();
 		dmyNode->_next = nullptr;
 
 		m_pHead = (Node*)((UINT64)dmyNode | (InterlockedIncrement64((volatile __int64*)&m_HeadCnt) << 47));
-		m_pTail = dmyNode;
+		m_pTail = (Node*)((UINT64)dmyNode | (InterlockedIncrement64((volatile __int64*)&m_TailCnt) << 47));
 
 	}
 	~LFQueue()
@@ -64,35 +63,51 @@ public:
 
 	void Clear()
 	{
+		T temp;
+		while (Dequeue(temp))
+		{
+
+		}
+
 		m_size = 0;
-		m_HeadCnt = 0;
 	}
 
 	void Enqueue(T InputParam)
 	{
-		DWORD    curID = GetCurrentThreadId();
 		Node*    newNode;
 		Node*    localTail;
 		Node*    localTailNext;
+		Node*    localRealTail;
+		UINT64   retCnt;
+
 
 		//신규 노드 생성
 		newNode = m_pMemoryPool->Alloc();
 		newNode->_data = InputParam;
 		newNode->_next = (Node*)0xFFFFFFFFFFFFFFFF;
 		
-
+		retCnt = InterlockedIncrement64((long long*)&m_TailCnt);
 
 		//사전 작업
 		while (1)
 		{
 			localTail = m_pTail;
-			localTailNext = localTail->_next;
+			localRealTail = (Node*)((UINT64)localTail & BITMASK);
+			localTailNext = localRealTail->_next;
 
-			if ((localTailNext == (Node*)0xFFFFFFFFFFFFFFFF) || (localTailNext == nullptr) )
+			if (localTailNext == nullptr)
 				break;
 
+			if (localTailNext == (Node*)0xFFFFFFFFFFFFFFFF)
+				continue;
+
+			localTailNext = (Node*)((UINT64)localTailNext | (retCnt << 47));
+
 			//next가 nullptr이 아니라면 tail을 바꾸자.
-			InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail);
+			if (InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail) == (__int64)localTail)
+			{
+				retCnt = InterlockedIncrement64((long long*)&m_TailCnt);
+			}
 
 		}
 
@@ -100,11 +115,14 @@ public:
 		while (1)
 		{
 			localTail = m_pTail;
+			localRealTail = (Node*)((UINT64)localTail & BITMASK);
+
 
 			//_tail->next 원자적으로 변경 시도
-			if (InterlockedCompareExchange64((__int64*)&m_pTail->_next, (__int64)newNode, (__int64)nullptr) == (__int64)nullptr)
+			if (InterlockedCompareExchange64((__int64*)&localRealTail->_next, (__int64)newNode, (__int64)nullptr) == (__int64)nullptr)
 			{
 				newNode->_next = nullptr;
+				newNode = (Node*)((UINT64)newNode | (retCnt << 47));
 
 				//성공하면 tail도 원자적으로 변경
 				InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)newNode, (__int64)localTail);
@@ -120,43 +138,64 @@ public:
 
 	bool Dequeue(T& OutputParam)
 	{
-		DWORD    curID = GetCurrentThreadId();
 		Node*    localHead = nullptr;
 		Node*    localHeadNext = nullptr;
 		Node*    realHead = nullptr;
 		Node*    realHeadNext = nullptr;
 		Node*    localTail;
+		Node*    localRealTail;
 		Node*    localTailNext;
-		UINT64   retCnt;
+		UINT64   retCntHead;
+		UINT64   retCntTail;
+		T        temp;
 
+		retCntTail = InterlockedIncrement64((long long*)&m_TailCnt);
 
 		//사전 작업
 		while (1)
 		{
 			localTail = m_pTail;
-			localTailNext = localTail->_next;
+			localRealTail = (Node*)((UINT64)localTail & BITMASK);
+			localTailNext = localRealTail->_next;
 
-			if ((localTailNext == (Node*)0xFFFFFFFFFFFFFFFF) || (localTailNext == nullptr))
+			if ((localTailNext == nullptr))
 				break;
 
+			if (localTailNext == (Node*)0xFFFFFFFFFFFFFFFF)
+				continue;
+
+			localTailNext = (Node*)((UINT64)localTailNext | (retCntTail << 47));
+
 			//next가 nullptr이 아니라면 tail을 바꾸자.
-			InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail);
+			if (InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail) == (__int64)localTail)
+			{
+				retCntTail = InterlockedIncrement64((long long*)&m_TailCnt);
+
+			}
 
 		}
 
-		retCnt = InterlockedIncrement(&m_HeadCnt);
-
+		retCntHead = InterlockedIncrement64((long long*)&m_HeadCnt);
 
 		while (1)
 		{
 			localHead = m_pHead;
 			realHead = (Node*)((UINT64)localHead & BITMASK);
 			realHeadNext = realHead->_next;
-			if (realHeadNext == nullptr)
+
+			// 내가 바라본 head와 다르면 다시 스냅샷 뜨기
+			// 이 작업을 통해 내가 바라봤던 head가 실제 head가 아니라 다른 쪽에서 enq하려고 재활용한 노드인데 head로 착각하는 상황 방지
+			if (localHead != m_pHead)
+				continue;
+
+			// 이 사이에 1st CAS해서 큐에 삽입한 것은 인지 불가
+
+			// 그 당시 바라봤던 head의 next가 nullptr이거나 FFFF면 그냥 뺄 노드가 없다고 판단하고 false 리턴.
+			if (realHeadNext == nullptr || realHeadNext == (Node*)0xFFFFFFFFFFFFFFFF)
 				return false;
-
-
-			localHeadNext = (Node*)((UINT64)realHeadNext | (retCnt << 47));
+			
+			localHeadNext = (Node*)((UINT64)realHeadNext | (retCntHead << 47));
+			temp = realHeadNext->_data;
 
 			if (InterlockedCompareExchange64((volatile __int64*)&m_pHead, (__int64)localHeadNext, (__int64)localHead) != (UINT64)localHead)
 				continue;
@@ -166,9 +205,7 @@ public:
 
 
 		//데이터 반환
-		localHeadNext = (Node*)((UINT64)localHeadNext & BITMASK);
-
-		OutputParam = localHeadNext->_data;
+		OutputParam = temp;
 
 		//노드 제거
 		if (!m_pMemoryPool->Free(realHead))
@@ -185,6 +222,3 @@ public:
 	}
 
 };
-
-template <typename T>
-CMemoryPool<typename LFQueue<T>::Node>* LFQueue<T>::m_pMemoryPool = nullptr;

@@ -282,7 +282,14 @@ public:
 				//전체 TotalTick에서 Max, Min 뺀 값을 call 횟수로 나눔
  				maxTime = (((ptr[i][j].s_Max[0] + ptr[i][j].s_Max[1]) / 2) * (double)1000000 / freq.QuadPart);
 				minTime = (((ptr[i][j].s_Min[0] + ptr[i][j].s_Min[1]) / 2) * (double)1000000 / freq.QuadPart);
-				avgTime = (((ptr[i][j].s_TotalTime - ptr[i][j].s_Max[0] - ptr[i][j].s_Max[1] - ptr[i][j].s_Min[0] - ptr[i][j].s_Min[1]) / (ptr[i][j].s_CallTime - 4)) * (double)1000000 / freq.QuadPart);
+				if (ptr[i][j].s_CallTime > 4)
+				{
+					avgTime = (((ptr[i][j].s_TotalTime - ptr[i][j].s_Max[0] - ptr[i][j].s_Max[1] - ptr[i][j].s_Min[0] - ptr[i][j].s_Min[1]) / (ptr[i][j].s_CallTime - 4)) * (double)1000000 / freq.QuadPart);
+				}
+				else
+				{
+					avgTime = ptr[i][j].s_TotalTime / ptr[i][j].s_CallTime * (double)1000000 / freq.QuadPart;
+				}
 
 
 

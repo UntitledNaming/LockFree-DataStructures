@@ -20,10 +20,13 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="LFQSingleLive.h">
+    <ClInclude Include="LockFreeMemoryPoolLive.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="LockFreeMemoryPoolLive.h">
+    <ClInclude Include="LFQSingleTag.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="LFQSingleLive.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

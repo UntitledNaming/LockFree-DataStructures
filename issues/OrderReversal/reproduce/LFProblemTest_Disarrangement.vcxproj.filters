@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="LFQMultiLive.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="LockFreeMemoryPoolLive.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>

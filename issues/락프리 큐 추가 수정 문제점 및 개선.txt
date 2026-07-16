@@ -1,0 +1,44 @@
+1. size = 0 체크 후 Deq CAS 시작 문제
+- 실제로 Enq하는데 2ndCAS까지 다 했는데 size를 안올려서 실제 큐에 노드가 있는데 Deq를 못하고 나올 수 있음.
+- 그래서 그냥 size 체크 빼고 head->next가 nullptr이면 return false 함.,
+
+2. 그냥 head->next == nullptr이면 head를 잘못보든 못보든 그냥 return false
+- 결국 이것도 실제 큐에 빼낼 노드가 있는데 head가 바뀐지 모르고 로컬에 저장한 head의 next가 nullptr이면 탈출하면 문제임
+- 그래서 next를 로컬에 저장하고 나서 head가 재사용된지 체크한번 해주는데 로컬에 저장된 head랑 실제 head랑 다르면 재사용된거니 다시 로컬에 저장함.
+
+3. 그리고 나서 localhead == m_pHead면  이제 로컬에 저장한 next가 nullptr이면 return false로 
+- 이거 문제는 큐에 노드가 1개 있는 데 1번 스레드가 enq시 1stCAS해서 next를 ffff에서 nullptr로 밀기전에 스레드가 선점 당하고 2번 스레드가 deq를해서 노드를 1개 빼버리고 
+		while (1)
+		{
+			localHead = m_pHead;
+			realHead = (Node*)((UINT64)localHead & BITMASK);
+			realHeadNext = realHead->_next;
+
+			// 내가 바라본 head와 다르면 다시 사전작업
+			// 이 작업을 통해 내가 바라봤던 head가 실제 head가 아니라 다른 쪽에서 enq하려고 재활용한 노드인데 head로 착각하는 상황 방지
+			if (localHead != m_pHead)
+				continue;
+
+			// 이 사이에 1st CAS해서 큐에 삽입한 것은 인지 불가
+
+			// 그 당시 바라봤던 head의 next가 nullptr이면 그냥 뺄게 없다고 판단하고 false 리턴.
+			if (realHeadNext == nullptr)
+				return false;
+			
+			localHeadNext = (Node*)((UINT64)realHeadNext | (retCntHead << 47));
+			temp = realHeadNext->_data;
+
+			if (InterlockedCompareExchange64((volatile __int64*)&m_pHead, (__int64)localHeadNext, (__int64)localHead) != (UINT64)localHead)
+				continue;
+
+			break;
+		}
+- 다시 deq를 해서 노드를 뺄 때 localHead == m_pHead이고 realHeadNext는 지금 아직 노드 next를 FFFF이니 2번째 if도 그냥 통과해버림. 
+- 이건 수정해야 함. 이때 다시 루프를 돌게 해서 제대로 next가 nullptr인지 체크시키게 해도 되고 next가 FFFF면 똑같이 return false 시킬 수도 있음.
+
+4. next 변경 시 Tag값 부여 위치
+- 기존에는 1stCAS도 next 변수를 수정하니 수정했다는 것을 기록하기 위해 newNode에 tag값 부여된 주소값으로 1stCAS 할때 변경할 값으로 세팅했음.
+- 그런데 지금 이 Tag값이 정확히 뭐 때문에 필요한지 생각해보면 단순히 내가 바라본 next 변수에 저장된 값이 바뀐 것을 1stCAS할때 알아차리지 못해서가 아니라
+  내가 바라본 next가 nullptr인지 아니면 누가 다시 재사용해서 세팅한 nullptr인지를 모르는 것임. 
+- 그러면 우리는 tag값을 부여할 위치를 단순히 next가 수정되는 newNode->next = tag | nullptr 이나 newTagNode = tag | newNode가 아니라 newTagNode = tag | newNode는 없애도 된다는 것임.
+- newNode의 next 수정시 tag | nullptr만 해줘도 1stCAS할때 내가 바라본 next가 그 당시 nullptr인지 아니면 누가 수정한 nullptr인지 알 수 있게 됨.

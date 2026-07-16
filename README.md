@@ -1,55 +1,105 @@
-# LockFree-DataStructures
-Lock-Free stack, queue, memory pool implementations with ABA, page decommit, order inversion issues reproduction &amp; solutions
+# Lock-Free 자료구조
 
-< 폴더 구조 >
-1. debug_cases
-   - 2nd CAS 실패, ABA, PageDecommit 발생시 해당 자료구조에 어떤 스레드가 무슨 작업 했는지 로그 및 해석 자료
-     
-2. docs
-   - ppt
-   - 영상 링크
-   - spinlock, srwlock, lockfree 테스트 결과 및 실행 프로그램
-     
-3. include
-   - 락프리 큐(공용 노드 풀 사용 버전, 안쓰는 버전)
-   - 락프리 스택
-   - 락프리 메모리 풀
+## 1. 프로젝트 개요
 
-4. issues
-   - 락프리 사용 시 발생 가능한 문제 재현 코드 및 해결 코드
-   - reproduce 폴더에 해당 솔루션 있음.
-    
-6. test
-   - spinlock, srwlock, lockfree 테스트 프로젝트
+Lock-Free 스택·큐·메모리 풀을 직접 구현하고, 멀티스레드 환경에서 실제로 발생하는 동시성 문제를 재현·분석·해결한 프로젝트입니다. 자료구조를 만드는 것 자체보다, ABA·Page Decommit·Order Reversal·공유 노드 풀 오염 같은 문제를 재현 코드와 해결 코드로 나눠 정리하고, 로그와 테스트로 원인을 추적한 과정이 핵심입니다. 이를 통해 Lock-Free가 항상 빠르거나 안전한 구조가 아니라는 점도 확인했습니다.
 
-< 문제 재현 및 해결 영상 >
-1. ABA 문제
-   - 원인 : 동일 top 노드의 재활용을 인식 하지 못함.
-   - 해결 : top 노드 멤버 변수에 노드 주소값 + tag 값을 설정하여 재활용 확인
-   - 재현 영상 링크 : https://youtu.be/tbD-PNxHf5s
-   - 해결 영상 링크 : https://youtu.be/LjmOqV8cS9M
-     
-2. Page Decommit 문제
-   - 원인 : 힙에 반납한 노드가 있던 페이지를 힙이 Decommit 시킴
-   - 해결 : 메모리 관리 주체를 내가 함.(메모리 풀 사용)
-   - 재현 영상 링크 : https://youtu.be/tFWJiXKYj5Y
-   - 해결 영상 링크 : https://youtu.be/pd9q8vR92S4
-       
-3. Queue 순서 뒤바뀜 문제
-   - 원인 : 1stCAS는 tail이 가리키는 노드의 next멤버변수가 nullptr인지를 체크하지 그 노드가 실제 tail임을 보장하지 않음.
-   - 해결 : Enqueue 작업 시 next 멤버 변수를 nullptr이 아닌 특정 값으로 초기화
-   - 재현 영상 링크 : https://youtu.be/gUviydSV0wA
-   - 해결 영상 링크 : https://youtu.be/7gOG7qrjBoM
-     
-4. 공용 노드 풀 사용 문제
-   - 원인 : 1stCAS는 tail이 가리키는 next 멤버변수가 nullptr인지 체크하는것이지 그 tail이 기존 큐의 tail인지 다른 큐의 tail인지는 보장하지 않음.
-   - 해결 : 1stCAS를 할때 next멤버변수가 nullptr인지 체크 + 기존 큐인지 체크 (Queue ID 삽입)
-   - 재현 영상 링크 : https://youtu.be/iPoZmHwS0OM
-   - 해결 영상 링크 : https://youtu.be/Jkn-RgcsvVc
+## 2. 전체 포트폴리오에서의 역할
 
+이 프로젝트는 대표 프로젝트를 뒷받침하는 기반 기술 프로젝트입니다. 게임 서버는 본질적으로 멀티스레드 환경이므로, 동시성 문제를 재현하고 원인을 추적하는 능력이 먼저 필요합니다. 여기서 다룬 Lock-Free 자료구조와 동시성 분석은 이후 P1 IOCP 네트워크 라이브러리의 세션 큐·메모리 풀, P4 MMORPG 월드 서버의 멀티스레드 처리로 이어집니다.
 
-< 동기화 방식 성능 비교>
-1. ppt 참조
-2. 요약
-   - 논리 코어 갯수 > 스레드 갯수 : srwlock > spinlock = lockfree
-   - 논리 코어 갯수 < 스레드 갯수 : srwlock > lockfree > spinlock
+## 3. 핵심 구현
+
+| 영역 | 내용 |
+|---|---|
+| Lock-Free Stack | CAS 기반 Push / Pop, 태그를 실은 포인터로 ABA 방지 |
+| Lock-Free Queue | CAS 기반 Enqueue / Dequeue, 더미 노드와 tail 전진 처리 |
+| 노드 풀 / 메모리 재사용 | 노드를 OS에 반환하지 않고 자체 풀에서 재사용, 풀 소유 ID로 잘못된 반납 차단 |
+| ABA 재현·해결 | 태그 없는 CAS로 문제 재현, 태그를 실은 포인터로 해결 |
+| Page Decommit 재현·해결 | 노드 페이지를 OS에 반환하는 방식으로 문제 재현, 자체 풀로 해결 |
+| Order Reversal 재현·해결 | 삽입 중 노드를 다른 스레드가 오인하는 문제 재현, 진행 중 표시값으로 해결 |
+| Shared Node Pool 오염 재현·해결 | 두 큐가 노드 풀을 공유할 때 오염을 재현, 소유 큐 식별자와 128비트 CAS로 해결 |
+| 동기화 비교 테스트 | Spinlock / SRWLock / Lock-Free를 스레드 수별로 비교 |
+
+각 문제는 `issues/` 아래에 재현 코드와 해결 코드가 쌍으로 정리되어 있습니다.
+
+## 4. 재현·분석한 동시성 문제
+
+### 4.1 ABA 문제
+- 문제 상황: 노드가 재사용되어 스택의 top이 A → B → A로 돌아오면, 그 사이 상태가 바뀌었는데도 CAS가 성공해 리스트가 깨짐.
+- 원인: 주소만 비교하는 CAS는 "같은 주소"만 볼 뿐, 그 사이 노드가 빠졌다 다시 들어온 변화를 구분하지 못함.
+- 해결 방식: 포인터 상위 비트에 단조 증가하는 태그(버전)를 실어, "주소 + 버전"이 같아야 CAS가 성공하도록 함.
+- 정리: 주소 비교만으로는 재사용 문제를 막을 수 없고, 버전 정보가 함께 필요함.
+
+### 4.2 Page Decommit 문제
+- 문제 상황: 노드가 있던 메모리 페이지가 OS에 반환된 뒤, 다른 스레드가 그 주소를 참조하다 크래시.
+- 원인: Lock-Free는 이미 읽은 포인터가 언제든 유효해야 하는데, 메모리가 OS로 사라지면 주소 자체가 무효가 됨. 버전 태그는 재사용은 막아도 메모리 소멸은 막지 못함.
+- 해결 방식: 노드를 OS에 반환하지 않고 자체 메모리 풀에서 관리해, 참조 중인 메모리가 사라지지 않게 함.
+- 정리: ABA 카운터만으로는 막기 어렵고, 메모리 회수 정책 자체가 중요함.
+
+### 4.3 Order Reversal 문제
+- 문제 상황: 큐 Enqueue 중인 노드를 다른 스레드가 완성된 꼬리로 오인해, 순서가 뒤바뀌거나 노드가 유실됨.
+- 원인: tail이 가리키는 노드의 next가 nullptr인지만 확인하면, 그 노드가 삽입 중인지 완성됐는지를 구분하지 못함.
+- 해결 방식: 삽입 중인 노드의 next를 nullptr이 아닌 진행 중 표시값으로 초기화하고, 다른 스레드가 그 값을 보면 대기하도록 함.
+- 정리: "next가 nullptr"이 곧 "완성된 꼬리"를 뜻하지 않으므로, 삽입 중 상태를 명시해야 함.
+
+### 4.4 Shared Node Pool 오염 문제
+- 문제 상황: 두 큐가 하나의 노드 풀을 공유할 때, 한 큐가 반납한 노드를 다른 큐가 재사용하면서 링크가 교차 오염됨.
+- 원인: tail의 next만 비교하는 CAS는 그 노드가 내 큐 것인지 다른 큐 것인지를 구분하지 못함.
+- 해결 방식: 노드에 소유 큐 식별자(Qid)를 심고, 링크 시 128비트 CAS로 next와 Qid를 함께 검사해 다른 큐의 노드는 거부.
+- 정리: 풀을 공유하면 소유권 검증이 필요하며, 이를 위해 128비트 CAS로 두 값을 원자적으로 확인함.
+
+## 5. 동기화 방식 비교 테스트
+
+Spinlock / SRWLock / Lock-Free로 같은 작업(Push + Pop)을 스레드 수별로 반복 실행하고, 처리량(Total Count)과 성공/실패, CPU, 컨텍스트 스위치를 비교했습니다.
+
+| 방식 | 특징 | 테스트에서 확인한 점 |
+|---|---|---|
+| Spinlock | 짧은 임계구역에 유리, 대기 중 CPU 소모 | 스레드가 논리 코어 수를 넘으면 상대적으로 불리해짐 |
+| SRWLock | OS 제공 락, 대기 시 스케줄러에 양보 | 테스트한 조건에서는 전반적으로 안정적인 처리량을 보임 |
+| Lock-Free | 락 없이 CAS로 진행, 대기 없음 | 경합이 심하면 CAS 재시도 비용이 커져 항상 우위는 아님 |
+
+핵심은 "Lock-Free가 항상 빠르다"가 아니라, **논리 코어 수와 스레드 수의 관계, 경합 구조에 따라 방식별 우열이 달라진다**는 것입니다. (구체적인 스레드 수별 처리량 수치는 정리 중입니다. TODO)
+
+## 6. 코드 흐름 요약
+
+README에서는 핵심 흐름만 요약합니다. 함수 단위 상세는 `docs/Code_Flow.md`로 정리합니다.
+
+- **Lock-Free Stack Push / Pop**: top을 읽고 새 노드를 연결한 뒤 태그를 실어 CAS, 실패하면 재시도. Pop은 노드를 풀에 반납.
+- **Lock-Free Queue Enqueue / Dequeue**: 더미 노드를 두고, 삽입 중 표시값으로 노드를 보호하며 tail을 전진. Dequeue는 head를 전진하고 기존 노드를 반납.
+- **ABA 재현/해결**: 태그 없는 CAS로 재사용 문제를 재현하고, 태그를 실은 포인터로 해결.
+- **Page Decommit 재현/해결**: 페이지를 OS에 반환해 크래시를 재현하고, 자체 풀로 해결.
+- **Shared Node Pool 오염 재현/해결**: 공유 풀에서 오염을 재현하고, Qid + 128비트 CAS로 해결.
+
+## 7. 주요 결과
+
+- 동시성 버그는 현재 상태만 보면 안 되고, 어떤 스레드가 어떤 순서로 작업했는지 이벤트 흐름을 추적해야 원인이 보입니다.
+- Lock-Free는 CAS 재시도 비용과 메모리 재사용 문제를 함께 안고 있습니다.
+- ABA는 주소 비교만으로는 해결되지 않고 버전 정보가 필요합니다.
+- Page Decommit은 ABA 카운터만으로 막기 어렵고, 메모리 회수 정책이 필요합니다.
+- 동기화 방식은 어느 하나가 항상 우위인 것이 아니라, 부하 조건와 스레드 수에 따라 선택해야 합니다.
+
+## 8. 문서 목록
+
+- `docs/Code_Flow.md` — 자료구조·문제별 코드 흐름 상세 (TODO)
+- `docs/Design_Rationale.md` — 설계 의도와 판단 (TODO)
+- `docs/Test_Report.md` — 동기화 비교 테스트 결과 (TODO)
+- `docs/Troubleshooting.md` — 문제 재현·분석 정리 (TODO)
+- `docs/Build_And_Run.md` — 빌드·실행 상세 (TODO)
+
+문제별 재현·해결 영상 링크는 저장소 내 `docs/videos/`에 참고용으로 정리되어 있습니다.
+
+## 9. Build & Run
+
+- 환경: Windows, Visual Studio 2022, C++17, x64 빌드
+- 재현·해결 코드는 `issues/` 아래 문제별 폴더에서, 동기화 비교 테스트는 `test/` 폴더에서 실행합니다.
+
+자세한 빌드·실행 절차는 `docs/Build_And_Run.md`로 분리합니다. (TODO)
+
+## 10. 개선 방향
+
+- Hazard Pointer, Epoch Based Reclamation 등 다른 메모리 회수 방식과 비교
+- 문제 재현 테스트 케이스의 자동화
+- 동기화 비교 결과의 시각화
+- 더 다양한 부하 조건(임계구역 길이·경합 정도)에서의 비교
+- Linux 환경 동기화 방식과의 비교 (확인 필요)

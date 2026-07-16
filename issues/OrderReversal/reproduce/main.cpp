@@ -53,7 +53,6 @@ unsigned int __stdcall WorkerThread1(LPVOID lpParam)
 
 unsigned int __stdcall WorkerThread2(LPVOID lpParam)
 {
-
 	g_queue.Enqueue(200);
 
 	return 0;
