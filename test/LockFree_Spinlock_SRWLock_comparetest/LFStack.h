@@ -36,8 +36,6 @@ public:
 		//멤버 초기화
 		Clear();
 
-		m_size = size;
-
 	};
 	~LFStack()
 	{
@@ -48,7 +46,6 @@ public:
 	void Clear()
 	{
 		m_pTopNode = nullptr;
-		m_size = 0;
 		m_topCnt = 0;
 	}
 
@@ -61,21 +58,21 @@ public:
 		Node*    t;
 		Node*    real;
 		uint64_t retCnt = InterlockedIncrement(&m_topCnt);
+		m_cntarray[idx].s_topCnt++;
 
 		newNode->data = InputData;
 
-		do {
-			m_cntarray[idx].s_totalCnt++;
+		unsigned delay = 1;
 
+		do {
 			//CAS 실패하면 newNode에 붙인 tag때기
 			newNode = (Node*)(((uint64_t)newNode << 17) >> 17);
-
 
 			t = m_pTopNode; 
 			real = (Node*)((uint64_t)t & BIT_MASK);
 			newNode->pNextNode = real;
 			newNode = (Node*)((UINT64)newNode | (retCnt << 47));
-
+			m_cntarray[idx].s_totalCnt++;
 			if (_InterlockedCompareExchange64((volatile __int64*)&m_pTopNode, (__int64)newNode, (__int64)t) == (__int64)t)
 			{
 				m_cntarray[idx].s_succesCnt++;
@@ -84,9 +81,12 @@ public:
 			else
 				m_cntarray[idx].s_failCnt++;
 
+			for (unsigned i = 0; i < delay; i++)
+				YieldProcessor();                    // pause — 로컬에서만 돔
+			if (delay < 1024) delay <<= 1;           // 지수 백오프
+
 		} while (1);
 
-		InterlockedIncrement64((volatile LONG64*) & m_size);
 	}
 
 	//Data는 OutParameter임.
@@ -100,23 +100,22 @@ public:
 		Node* newTopNode;
 
 		uint64_t retCnt = InterlockedIncrement(&m_topCnt);
+		m_cntarray[idx].s_topCnt++;
 
+		unsigned delay = 1;
 
 		do {
-			m_cntarray[idx].s_totalCnt++;
 
 			t = m_pTopNode; //기존 탑 노드 저장
 
 			real = (Node*)((uint64_t)t & BIT_MASK);
 			if (real == nullptr)
-			{
 				return false;
-			}
 
 
 			newTopNode = real->pNextNode;
 			newTopNode = (Node*)((uint64_t)newTopNode | (retCnt << 47));
-
+			m_cntarray[idx].s_totalCnt++;
 			if (_InterlockedCompareExchange64((volatile __int64*)&m_pTopNode, (__int64)newTopNode, (__int64)t) == (__int64)t)
 			{
 				m_cntarray[idx].s_succesCnt++;
@@ -125,6 +124,10 @@ public:
 			else
 				m_cntarray[idx].s_failCnt++;
 
+			for (unsigned i = 0; i < delay; i++)
+				YieldProcessor();                    // pause — 로컬에서만 돔
+			if (delay < 1024) delay <<= 1;           // 지수 백오프
+
 		} while (1);
 
 
@@ -132,9 +135,6 @@ public:
 		Data = real->data;
 		if (!(m_pMemoryPool->Free(real)))
 			__debugbreak();
-
-
-		InterlockedDecrement64((volatile LONG64*) & m_size);
 
 		return true;
 	}
@@ -146,12 +146,10 @@ public:
 		return false;
 	}
 
-	inline INT64 GetUseCnt() { return m_size; }
 
 private:
-	Node*                               m_pTopNode;
-	uint64_t                            m_size;
-	uint64_t                            m_topCnt;
+	alignas(64) Node*                   m_pTopNode;
+	alignas(64) uint64_t                m_topCnt;
 	CMemoryPool<Node>*                  m_pMemoryPool;
 };
 

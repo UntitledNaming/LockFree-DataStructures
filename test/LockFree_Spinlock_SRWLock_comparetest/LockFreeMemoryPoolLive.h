@@ -57,7 +57,7 @@ public:
 		m_pTopNode = nullptr;
 		m_iUseCnt = 0;
 		m_iTopCnt = 0;
-
+		m_iCapacity = 0;
 
 
 		for (int i = 0; i < iBlockNum; i++)
@@ -100,7 +100,8 @@ public:
 		newNode->s_poolD = m_iOriginID;
 
 		//객체 생성자 호출
-		new(&newNode->s_data) T;
+		if(m_bPlacementNew == false)
+			new(&newNode->s_data) T;
 
 		//기존 TopNode에 연결
 		newNode->s_pNext = m_pTopNode;
@@ -126,7 +127,8 @@ public:
 			newNode->s_poolD = m_iOriginID;
 
 			//객체 생성자 호출
-			new(&newNode->s_data) T;
+			if (m_bPlacementNew == false)
+				new(&newNode->s_data) T;
 
 			retCnt = InterlockedIncrement(&m_iTopCnt);
 
@@ -145,7 +147,6 @@ public:
 		}
 
 		m_iCapacity += Num;
-		wprintf(L"MemoryPool Capacity Up : %d \n", m_iCapacity);
 	}
 
 	//Alloc에서 아웃파라미터로 노드 포인터 줄 것임
@@ -157,7 +158,8 @@ public:
 		newNode->s_poolD = m_iOriginID;
 
 		//객체 생성자 호출
-		new(&newNode->s_data) T;
+		if (m_bPlacementNew == false)
+			new(&newNode->s_data) T;
 
 		InterlockedIncrement(&m_iCapacity);
 		InterlockedIncrement(&m_iUseCnt);
@@ -217,9 +219,6 @@ public:
 			if (real == nullptr)
 				__debugbreak();
 
-			if(&real->s_data == nullptr)
-				__debugbreak();
-
 
 			return &real->s_data;
 		}
@@ -247,7 +246,7 @@ public:
 		//기존 Top노드 메모리 풀과 분리했으니 추가 작업하던지 바로 반환
 		if (m_bPlacementNew == true)
 		{
-			new(&(t->s_data)) T;
+			new(&(real->s_data)) T;
 		}
 
 		//어차피 노드 생성할 때 생성자 이미 1번 호출해서 false일때 생각할 필요 없음.
@@ -307,8 +306,8 @@ public:
 	}
 
 
-
 };
 
 #endif
+
  

@@ -40,7 +40,10 @@ public:
 		if (!pool.empty())
 		{
 			if (pData == pool.front())
+			{
+				LeaveCriticalSection(&cs);
 				return false;
+			}
 		}
 
 		pool.push(pData);

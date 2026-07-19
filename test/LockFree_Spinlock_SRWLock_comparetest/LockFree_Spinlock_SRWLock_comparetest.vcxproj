@@ -130,6 +130,7 @@
     <ClInclude Include="Interlocked.h" />
     <ClInclude Include="LFQSingleLive.h" />
     <ClInclude Include="LFStack.h" />
+    <ClInclude Include="LockFreeMemoryPoolLive.h" />
     <ClInclude Include="ProcessMonitor.h" />
     <ClInclude Include="ProfilerTLS.h" />
     <ClInclude Include="Stack.h" />

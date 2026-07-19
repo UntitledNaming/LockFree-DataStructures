@@ -70,8 +70,7 @@ unsigned int __stdcall WorkerThread(LPVOID lpParam)
 				__debugbreak();
 			}
 		}
-
-		g_Stack.Push(0);
+		
 	}
 
 

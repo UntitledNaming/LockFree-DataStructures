@@ -19,7 +19,6 @@ int main()
 
     CTest* p = new CTest;
 
-
     // 사전 작업
     p->TestInit();
 
@@ -28,7 +27,6 @@ int main()
 
     // 스레드 제거 및 정리
     p->TestClear();
-
 
     wprintf(L"Test End...\n");
 }

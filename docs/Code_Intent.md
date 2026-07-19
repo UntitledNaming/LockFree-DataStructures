@@ -1,7 +1,7 @@
 # 코드 의도 문서 (Code Intent) — P2 Lock-Free 자료구조
 
 > 이 문서는 저장소의 모든 코드 파일(.h/.cpp, 재현·해결·테스트 코드)을 "무엇을 하는가"가 아니라 **"왜 이렇게 작성했는가"** 중심으로 설명한다.
-> 동작 흐름은 `docs/Code_Flow.md`, 설계 비교는 `docs/Design_Rationale.md`, 문제 서사는 `docs/Troubleshooting.md` 참고.
+> 동작 흐름은 `docs/Code_Flow.md` 참고.
 
 ---
 
@@ -36,9 +36,9 @@
 
 | 함수 | 하는 일 | 이렇게 작성한 의도 |
 |---|---|---|
-| 생성자 | 더미 노드 1개 생성, head/tail이 더미를 가리킴 | 빈 큐 상태 전이에서 head/tail 두 변수를 원자적으로 함께 바꿀 방법이 없어, "더미만 있음 = 빈 큐"로 정의해 문제 자체를 제거 (`Design_Rationale.md` §9) |
+| 생성자 | 더미 노드 1개 생성, head/tail이 더미를 가리킴 | 빈 큐 상태 전이에서 head/tail 두 변수를 원자적으로 함께 바꿀 방법이 없어, "더미만 있음 = 빈 큐"로 정의해 문제 자체를 제거 |
 | `Enqueue(T)` | 노드 할당 후 `_next = 0xFFFF...F` → tail 밀기 사전 작업 → 1st CAS(링크) → next를 nullptr로 복원 → 2nd CAS(tail 전진) | next를 nullptr가 아닌 **표식 값로 초기화**하는 것이 Order Reversal 해결의 핵심. "next==nullptr = 완성된 꼬리"라는 의미가 삽입 중 노드와 겹치지 않게 했다 |
-| `Dequeue(T&)` | tail 밀기 사전 작업 → head 태그 CAS 전진 → `headNext->_data` 반환 → 옛 head를 풀에 반납 | Dequeue에서도 tail을 먼저 미는 이유: 2nd CAS 실패로 뒤처진 tail을 다음 연산이 보정하는 구조이기 때문 (`Design_Rationale.md` §10) |
+| `Dequeue(T&)` | tail 밀기 사전 작업 → head 태그 CAS 전진 → `headNext->_data` 반환 → 옛 head를 풀에 반납 | Dequeue에서도 tail을 먼저 미는 이유: 2nd CAS 실패로 뒤처진 tail을 다음 연산이 보정하는 구조이기 때문 |
 | `Clear()` | size/태그 초기화 | 큐 재활용용. 노드 정리는 풀 소관 |
 
 ### 1.3 `include/LFQMultiLive.h` — `LFQueueMul<T>` (공유 풀 대응판)
@@ -144,5 +144,19 @@
 | 항목 | 내용 |
 |---|---|
 | `debug_cases` 분석 txt 원문 | 12케이스 분석 로그는 대표 케이스만 정독됨. 전체 판독은 미완 |
-| `docs/results` 실측값 | 스레드 1/3/16 Total Count 수치는 txt 미파싱 상태 — 문서·발표 인용 전 확정 필요 |
 | `PageDecommit/clear` 빌드 구성 | `LFStack_ver2.h` 포함 vs 실제 링크 대상 vcxproj 확인 |
+
+> `docs/results` 실측값은 스레드 1/3/6/36 · 3분 재측정으로 확정됨(구버전 10초 · 1/3/16은 폐기). 수치는 `docs/Test_Report.md` §3 참고.
+
+
+---
+
+## 부록. 태그 방식 개선판 (`LFQSingleTag.h` / `LFQMultiTag.h`)
+
+| 항목 | 구현 | 의도 |
+|---|---|---|
+| `newNode->_next = nullptr \| (retNextCnt << 47)` | Enqueue에서 next를 null 상태로 만들 때 전용 발급 카운터의 태그를 상위 17비트에 실음 | 순서 꼬임의 본질은 "내가 본 nullptr인지, 재사용 후 다시 만들어진 nullptr인지"의 구분이므로 null 상태에 세대를 기록 |
+| 1st CAS 비교값 = `localTailNext & TAGMASK` | 내가 본 next에서 주소부를 지우고 "태그 붙은 nullptr"만 남겨 비교 | 재사용된 노드의 새 nullptr은 태그가 달라 CAS가 실패 → 대기·재시도. 태그는 null 갱신 시에만 부여하면 충분(주소가 든 next는 어차피 비교 실패라 newNode에 태그 불필요) |
+| 단일 큐판: `UINT64 m_NextCnt`(멤버) | 큐 하나가 자기 발급원을 가짐 | 풀을 공유하지 않으면 큐 내부 유일성으로 충분 |
+| 공용 풀판: `static UINT64 m_NextCnt` | 모든 큐가 하나의 발급원을 공유 | 큐별 발급이면 서로 다른 큐가 같은 태그를 만들 수 있어(재활용 노드 오인 삽입) 전역 유일성이 필요. Qid·CAS128 없이 CAS64로 차단 |
+| 감수한 점 | 전역 발급 카운터가 새 공유 캐시라인 경합 지점, 17비트 태그 순환 가속 | 동기화 비교 테스트에서 정량화한 캐시라인 이동 비용이 발급기에 붙음 — 스레드 번호+스레드별 카운터 조합이 다음 개선 후보 |

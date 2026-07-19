@@ -1,9 +1,0 @@
-﻿[2025.9.29.19:15:36] 
-Total Count : 2315832593 / RDTSC Sum : 5028595142961  / 2171.40
-Average Process Total Time : 25.074373 % / 
-Average Process User Time : 24.998770 % / 
-Average Process Kernel Time : 0.075618 % / 
-Average Process Context Switches : 27.452101 /sec 
-Thread Count : 776380538
-Thread Count : 766169745
-Thread Count : 773282310

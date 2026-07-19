@@ -14,7 +14,6 @@
 #include "CPUUsage.h"
 #include "ProcessMonitor.h"
 #include "Stack.h"
-#include "LockFreeMemoryPoolLive.h"
 #include "LFStack.h"
 #include "Test.h"
 
@@ -24,6 +23,12 @@ void CTest::TestThread(void* pArguments)
     wprintf(L"TestThread Start : %d...\n", GetCurrentThreadId());
     int idx = (int)pArguments;
 
+    if (m_thCount <= 6)
+    {
+        SetThreadAffinityMask(GetCurrentThread(), 1ULL << (idx * 2));
+    }
+
+
     StackTest(idx);
 
 }
@@ -31,6 +36,7 @@ void CTest::MonitorThread(void* pArguments)
 {
     INT64 loopCnt = 0;
     DWORD result;
+    bool  endflag = false;
     float processtotalsum = 0;
     float processusersum = 0;
     float processkernelsum = 0;
@@ -38,7 +44,7 @@ void CTest::MonitorThread(void* pArguments)
 
     m_pPDH->UpdateCounter();
 
-    while (!m_EndFlag)
+    while (!endflag)
     {
         result = WaitForSingleObject(m_FileStore, 1000);
 
@@ -46,7 +52,7 @@ void CTest::MonitorThread(void* pArguments)
         {
             // 파일 저장 작업
             FileStore();
-            m_EndFlag = true;
+            endflag = true;
             break;
         }
 
@@ -61,17 +67,13 @@ void CTest::MonitorThread(void* pArguments)
             processkernelsum += m_pPDH->ProcessKernel();
             processcssum += m_pPDH->m_processCS;
 
-            for (int i = 0; i < m_thCount; i++)
-            {
-                m_failcount[i] = 0;
-            }
             m_processtotalavg = processtotalsum / loopCnt;
             m_processuseravg = processusersum / loopCnt;
             m_processkernelavg = processkernelsum / loopCnt;
             m_processCSavg = processcssum / loopCnt;
 
-            wprintf(L"[ CPU Average Usage                    : T[%f%] U[%f%] K[%f%]]\n", m_processtotalavg, m_processuseravg, m_processkernelavg);
-            wprintf(L"[ CPU Usage                            : T[%f%] U[%f%] K[%f%]]\n", m_pPDH->ProcessTotal(), m_pPDH->ProcessUser(), m_pPDH->ProcessKernel());
+            wprintf(L"[ CPU Average Usage                    : T[%f%%] U[%f%%] K[%f%%]]\n", m_processtotalavg, m_processuseravg, m_processkernelavg);
+            wprintf(L"[ CPU Usage                            : T[%f%%] U[%f%%] K[%f%%]]\n", m_pPDH->ProcessTotal(), m_pPDH->ProcessUser(), m_pPDH->ProcessKernel());
             wprintf(L"[ Process Context Switches/sec         : Cur[%4f /sec ] Avg[%4f /sec]]\n", m_pPDH->m_processCS, m_processCSavg);
         }
 
@@ -114,11 +116,12 @@ void CTest::TestClear()
         m_hThread[m_thCount].join();
     }
 
-    delete m_testLFStack;
-    delete m_testStack;
+    delete   m_testLFStack;
+    delete   m_testStack;
     delete[] m_hThread;
     delete[] m_hThreadID;
     delete[] m_count;
+    delete[] m_cntarray;
 }
 
 void CTest::TestInit()
@@ -137,22 +140,10 @@ void CTest::TestInit()
     wprintf(L"Test Time(minute) : ");
     wscanf(L"%d", &m_testTime);
 
-    m_count = new  UINT64[m_thCount];
+    m_count = new  PaddedCounter[m_thCount];
     for (int i = 0; i < m_thCount; i++)
     {
-        m_count[i] = 0;
-    }
-
-    m_failcount = new  UINT64[m_thCount];
-    for (int i = 0; i < m_thCount; i++)
-    {
-        m_failcount[i] = 0;
-    }
-
-    m_usertime = new  UINT64[m_thCount];
-    for (int i = 0; i < m_thCount; i++)
-    {
-        m_usertime[i] = 0;
+        m_count[i].count = 0;
     }
 
     m_cntarray = new  INTERLOCKCNT[m_thCount];
@@ -161,6 +152,8 @@ void CTest::TestInit()
         m_cntarray[i].s_failCnt = 0;
         m_cntarray[i].s_succesCnt = 0;
         m_cntarray[i].s_totalCnt = 0;
+        m_cntarray[i].s_topCnt = 0;
+        m_cntarray[i].s_unlockCnt = 0;
     }
 
     m_hThreadID = new  DWORD[m_thCount];
@@ -179,7 +172,6 @@ void CTest::StackTest(int idx)
     int data;
 
     DWORD start = timeGetTime();
-    UINT64 lockstart;
 
     int testtime = m_testTime;
 
@@ -190,13 +182,11 @@ void CTest::StackTest(int idx)
             if ((timeGetTime() - start) >= testtime * 60000)
                 break;
 
-            lockstart = __rdtsc();
             AcquireSRWLockExclusive(&m_SRWLock);
-            m_usertime[idx] += (__rdtsc() - lockstart);
             m_testStack->Push(1);
             m_testStack->pop(data);
             ReleaseSRWLockExclusive(&m_SRWLock);
-            m_count[idx]++;
+            m_count[idx].count++;
 
         }
     }
@@ -208,28 +198,29 @@ void CTest::StackTest(int idx)
             if ((timeGetTime() - start) >= testtime * 60000)
                 break;
 
-            SpinLock(idx);
 
+            SpinLock(idx);
             m_testStack->Push(1);
             m_testStack->pop(data);
-            SpinUnlock();
+            SpinUnlock(idx);
 
-            m_count[idx]++;
+            m_count[idx].count++;
         }
     }
 
     else if (m_testType == 2)
     {
+        LONG val = 1;
         while (1)
         {
             if ((timeGetTime() - start) >= testtime * 60000)
                 break;
 
-
             m_testLFStack->Push(1, idx, m_cntarray);
             m_testLFStack->Pop(data, idx, m_cntarray);
 
-            m_count[idx]++;
+
+            m_count[idx].count++;
 
         }
     }
@@ -244,21 +235,32 @@ void CTest::FileStore()
     time_t start;
     tm* local_time;
     UINT64 sum = 0;
-    UINT64 totalcntsum = 0;
+    UINT64 totaltrycntsum = 0;
     UINT64 successcntsum = 0;
     UINT64 failcntsum = 0;
+    UINT64 toptotalcntsum = 0;
+    UINT64 totalunlockcntsum = 0;
     DOUBLE successratio = 0;
     DOUBLE failratio = 0;
 
     for (int i = 0; i < m_thCount; i++)
     {
-        sum += m_count[i];
+        sum += m_count[i].count;
     }
-
 
     for (int i = 0; i < m_thCount; i++)
     {
-        totalcntsum += m_cntarray[i].s_totalCnt;
+        toptotalcntsum += m_cntarray[i].s_topCnt;
+    }
+
+    for (int i = 0; i < m_thCount; i++)
+    {
+        totalunlockcntsum += m_cntarray[i].s_unlockCnt;
+    }
+
+    for (int i = 0; i < m_thCount; i++)
+    {
+        totaltrycntsum += m_cntarray[i].s_totalCnt;
     }
     for (int i = 0; i < m_thCount; i++)
     {
@@ -271,8 +273,8 @@ void CTest::FileStore()
 
     if (m_testType != 0)
     {
-        successratio = (DOUBLE)successcntsum / totalcntsum * 100.0;
-        failratio = (DOUBLE)failcntsum / totalcntsum * 100.0;
+        successratio = (DOUBLE)successcntsum / totaltrycntsum * 100.0;
+        failratio = (DOUBLE)failcntsum / totaltrycntsum * 100.0;
     }
     else
     {
@@ -322,15 +324,23 @@ void CTest::FileStore()
 
     data += L"Total Count : ";
     data += to_wstring(sum);
-    data += L" / ";
+    data += L" / \n";
+
+    data += L"Interlock TopCnt Total Count : ";
+    data += to_wstring(toptotalcntsum);
+    data += L" / \n";
+
+    data += L"Interlock Unlock Total Count : ";
+    data += to_wstring(totalunlockcntsum);
+    data += L" / \n";
 
     data += L"Interlock Try Total Count : ";
-    data += to_wstring(totalcntsum);
-    data += L" / ";
+    data += to_wstring(totaltrycntsum);
+    data += L" / \n";
 
     data += L"Interlock Success Total Count : ";
     data += to_wstring(successcntsum);
-    data += L" / ";
+    data += L" / \n";
 
     data += L"Interlock Failed Total Count : ";
     data += to_wstring(failcntsum);
@@ -343,6 +353,10 @@ void CTest::FileStore()
     data += L"Interlock Failed Ratio : ";
     data += to_wstring(failratio);
     data += L" % / \n";
+
+    data += L"Interlock Real Total Count : ";
+    data += to_wstring(toptotalcntsum + totaltrycntsum + totalunlockcntsum);
+    data += L" / \n";
 
     data += L"Average Process Total Time : ";
     data += to_wstring(m_processtotalavg);
@@ -363,7 +377,7 @@ void CTest::FileStore()
     for (int i = 0; i < m_thCount; i++)
     {
         data += L"Thread Count : ";
-        data += to_wstring(m_count[i]);
+        data += to_wstring(m_count[i].count);
         data += L"\n";
     }
 
@@ -376,6 +390,8 @@ void CTest::FileStore()
 
 void CTest::SpinLock(int idx)
 {
+    unsigned delay = 1;
+
     while (1)
     {
         m_cntarray[idx].s_totalCnt++;
@@ -390,7 +406,8 @@ void CTest::SpinLock(int idx)
     }
 }
 
-void CTest::SpinUnlock()
+void CTest::SpinUnlock(int idx)
 {
     InterlockedExchange(&m_spinLock, 0);
+    m_cntarray[idx].s_unlockCnt++;
 }

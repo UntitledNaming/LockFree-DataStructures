@@ -30,25 +30,6 @@ public:
 		delete m_pMemoryPool;
 	};
 
-	Node* NodeAlloc(T data)
-	{
-		Node* newNode = m_pMemoryPool->Alloc();
-		newNode->data = data;
-		newNode->pNextNode = nullptr;
-
-		return newNode;
-	}
-
-	void push(Node* newNode)
-	{
-
-		newNode->pNextNode = m_pTopNode;
-		m_pTopNode = newNode;
-
-		InterlockedIncrement64((volatile LONG64*)&m_size);
-
-	}
-
 	void Push(T data)
 	{
 		Node* newNode = m_pMemoryPool->Alloc();
@@ -56,7 +37,6 @@ public:
 		newNode->pNextNode = m_pTopNode;
 		m_pTopNode = newNode;
 
-		InterlockedIncrement64((volatile LONG64*)&m_size);
 	}
 
 	bool pop(T& data)
@@ -71,8 +51,6 @@ public:
 		data = topNode->data;
 
 		m_pMemoryPool->Free(topNode);
-
-		InterlockedDecrement64((volatile LONG64*)&m_size);
 
 		return true;
 	}
