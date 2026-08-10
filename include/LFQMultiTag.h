@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "LockFreeMemoryPoolLive.h"
 
 #define LOG_BUFFER_SIZE 5000
@@ -121,7 +121,7 @@ public:
 			if (localRealTailNext == nullptr)
 				break;
 
-			localTailNext = (Node*)((UINT64)localTailNext | (retCnt << 47));
+			localTailNext = (Node*)((UINT64)localRealTailNext | (retCnt << 47));
 
 			//next가 nullptr이 아니라면 tail을 바꾸자.
 			if (InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail) == (__int64)localTail)
@@ -185,7 +185,7 @@ public:
 			if (localRealTailNext == nullptr)
 				break;
 
-			localTailNext = (Node*)((UINT64)localTailNext | (retCntTail << 47));
+			localTailNext = (Node*)((UINT64)localRealTailNext | (retCntTail << 47));
 
 			//next가 nullptr이 아니라면 tail을 바꾸자.
 			if (InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail) == (__int64)localTail)

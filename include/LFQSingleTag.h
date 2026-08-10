@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "LockFreeMemoryPoolLive.h"
 
 #define LOG_BUFFER_SIZE 5000
@@ -26,8 +26,7 @@ private:
 	UINT64                        m_TailCnt;
 	UINT64                        m_NextCnt;
 
-	static CMemoryPool<Node>*     m_pMemoryPool;
-	static LONG                   m_refCnt;
+	CMemoryPool<Node>*            m_pMemoryPool;
 
 public:
 	LFQueue()
@@ -36,7 +35,7 @@ public:
 		SYSTEM_INFO info;
 		GetSystemInfo(&info);
 
-		if (!((UINT64)info.lpMaximumApplicationAddress & USER_MEMORY_MAX))
+		if (((UINT64)info.lpMaximumApplicationAddress >> 47) != 0)
 		{
 			wprintf(L"UserMemory Address for Tag bit is not 17Bit\n");
 			__debugbreak();
@@ -50,15 +49,7 @@ public:
 
 
 		// static 메모리 풀 생성 확인
-		if (InterlockedIncrement(&m_refCnt) == 1)
-			m_pMemoryPool = new CMemoryPool<Node>(0);
-		else
-		{
-			while (m_pMemoryPool == nullptr)
-			{
-
-			}
-		}
+		m_pMemoryPool = new CMemoryPool<Node>(0);
 
 
 		//더미 노드 1개 생성
@@ -71,11 +62,13 @@ public:
 	}
 	~LFQueue()
 	{
-		if (InterlockedDecrement(&m_refCnt) == 0)
-		{
-			delete m_pMemoryPool;
-			m_pMemoryPool = nullptr;
-		}
+		Clear();
+		Node* dmy = reinterpret_cast<Node*>((UINT64)m_pHead & BITMASK);
+		if (dmy != nullptr)
+			m_pMemoryPool->Free(dmy);
+
+		delete m_pMemoryPool;
+		m_pMemoryPool = nullptr;
 	}
 
 	void Clear()
@@ -122,7 +115,7 @@ public:
 			if (localRealTailNext == nullptr)
 				break;
 
-			localTailNext = (Node*)((UINT64)localTailNext | (retCnt << 47));
+			localTailNext = (Node*)((UINT64)localRealTailNext | (retCnt << 47));
 
 			//next가 nullptr이 아니라면 tail을 바꾸자.
 			if (InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail) == (__int64)localTail)
@@ -139,7 +132,6 @@ public:
 			localRealTail = (Node*)((UINT64)localTail & BITMASK);
 			localTailNext = localRealTail->_next;
 
-			// 하위 47bit에 있는 실제 노드 주소값 지우고 next 변수의 tag값만 보기
 			cmpTailNext = (Node*)(((UINT64)localTailNext & TAGMASK));
 
 			//_tail->next 원자적으로 변경 시도
@@ -186,7 +178,7 @@ public:
 			if (localRealTailNext == nullptr)
 				break;
 
-			localTailNext = (Node*)((UINT64)localTailNext | (retCntTail << 47));
+			localTailNext = (Node*)((UINT64)localRealTailNext | (retCntTail << 47));
 
 			//next가 nullptr이 아니라면 tail을 바꾸자.
 			if (InterlockedCompareExchange64((__int64*)&m_pTail, (__int64)localTailNext, (__int64)localTail) == (__int64)localTail)
@@ -240,9 +232,3 @@ public:
 	}
 
 };
-
-template <typename T>
-CMemoryPool<typename LFQueue<T>::Node>* LFQueue<T>::m_pMemoryPool = nullptr;
-
-template <typename T>
-LONG LFQueue<T>::m_refCnt = 0;
